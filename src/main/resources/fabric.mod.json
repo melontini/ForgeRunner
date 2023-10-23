@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "forgerunner",
+  "version": "${version}",
+  "name": "ForgeRunner",
+  "description": "",
+  "authors": [],
+  "contact": {
+    "repo": "https://github.com/melontini/ForgeRunner"
+  },
+  "license": "MIT",
+  "icon": "assets/forgerunner/icon.png",
+  "environment": "*",
+  "entrypoints": {
+  },
+  "mixins": [
+    "forgerunner.mixins.json"
+  ],
+  "languageAdapters": {
+    "forgerunner": "me.melontini.forgerunner.loader.EarlyBootstrap"
+  },
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "minecraft": "*"
+  }
+}
