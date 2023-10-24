@@ -3,10 +3,10 @@ package me.melontini.forgerunner.loader;
 import lombok.extern.slf4j.Slf4j;
 import me.melontini.forgerunner.loader.adapt.ModAdapter;
 import me.melontini.forgerunner.util.JarPath;
+import me.melontini.forgerunner.util.Loader;
 import net.fabricmc.loader.api.LanguageAdapter;
 import net.fabricmc.loader.api.LanguageAdapterException;
 import net.fabricmc.loader.api.ModContainer;
-import net.fabricmc.loader.impl.FabricLoaderImpl;
 import net.fabricmc.loader.impl.launch.FabricLauncherBase;
 import net.fabricmc.loader.impl.launch.knot.Knot;
 
@@ -18,7 +18,7 @@ public class EarlyBootstrap implements LanguageAdapter {
 
     static {
         //Dirty hack to not crash devenv with all the dependencies we use. (not sorry)
-        FabricLoaderImpl.INSTANCE.getGameProvider().unlockClassPath(FabricLauncherBase.getLauncher());
+        Loader.getInstance().getGameProvider().unlockClassPath(FabricLauncherBase.getLauncher());
         try {
             if (FabricLauncherBase.getLauncher() instanceof Knot knot) {
                 Field unlocked = Knot.class.getDeclaredField("unlocked");

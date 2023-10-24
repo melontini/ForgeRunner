@@ -8,25 +8,23 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import me.melontini.forgerunner.loader.MixinHacks;
 import me.melontini.forgerunner.util.Exceptions;
 import me.melontini.forgerunner.util.JarPath;
 import net.fabricmc.loader.api.FabricLoader;
-import net.fabricmc.loader.impl.launch.knot.MixinServiceKnot;
-import net.fabricmc.loader.impl.launch.knot.MixinServiceKnotBootstrap;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
-import org.spongepowered.asm.launch.MixinBootstrap;
+import org.spongepowered.asm.service.IClassBytecodeProvider;
+import org.spongepowered.asm.service.IMixinService;
+import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.transformers.MixinClassWriter;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
@@ -59,20 +57,23 @@ public class ModAdapter {
 
     @SneakyThrows
     public static void start(List<JarPath> jars) {
-        System.setProperty("mixin.bootstrapService", MixinServiceKnotBootstrap.class.getName());
-        System.setProperty("mixin.service", MixinServiceKnot.class.getName());
-
-        try {
-            MixinBootstrap.init();//Let's pray this doesn't break something.
-        } catch (Throwable t) {
-            log.error("FAILED TO BOOTSTRAP MIXIN SERVICE EARLY!!!!", t);
-        }
+        MixinHacks.bootstrap();
 
         Gson gson = new Gson();
+        Map<String, byte[]> classMap = new HashMap<>();
         for (JarPath jar : jars) {
-            Path file = REMAPPED_MODS.resolve(jar.path().getFileName());
-            if (Files.exists(file)) return;
+            jar.jarFile().stream().filter(jarEntry -> jarEntry.getRealName().endsWith(".class"))
+                    .forEach(jarEntry -> Exceptions.uncheck(() -> classMap.put(jarEntry.getRealName().replace(".class", ""), jar.jarFile().getInputStream(jarEntry).readAllBytes())));
+        }
+
+        IClassBytecodeProvider current = MixinService.getService().getBytecodeProvider();
+        IMixinService currentService = MixinService.getService();
+        MixinHacks.crackMixinBytecodeProvider(current, currentService, classMap);
+
+        for (JarPath jar : jars) {
             log.debug("Adapting {}", jar.path().getFileName());
+            Path file = REMAPPED_MODS.resolve(jar.path().getFileName());
+            if (Files.exists(file)) continue;
             ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(file));
 
             ModAdapter remapper = new ModAdapter(jar, zos); //TODO: Adapt ATs
@@ -86,6 +87,8 @@ public class ModAdapter {
             zos.close();
             jar.jarFile().close();
         }
+
+        MixinHacks.uncrackMixinService(currentService, classMap);
     }
 
     private void transformClasses() {
