@@ -2,6 +2,7 @@ package me.melontini.forgerunner.loader;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import me.melontini.forgerunner.loader.adapt.ModAdapter;
 import me.melontini.forgerunner.util.Exceptions;
 import me.melontini.forgerunner.util.JarPath;
 import net.fabricmc.loader.api.FabricLoader;
@@ -9,6 +10,7 @@ import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.api.metadata.ModOrigin;
 import net.fabricmc.loader.impl.discovery.DirectoryModCandidateFinder;
 
+import java.io.IOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -59,6 +61,16 @@ public class ModLocator {
         });
         candidates.removeIf(path -> path.jarFile().getEntry("META-INF/mods.toml") == null);
         log.info("Found {} Forge mod candidate" + (candidates.size() == 1 ? "" : "s"), candidates.size());
+
+        Files.walkFileTree(ModAdapter.REMAPPED_MODS, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                if (!Files.exists(mods.resolve(file.getFileName()))) {
+                    Files.deleteIfExists(file);
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
         return candidates;
     }
 }
