@@ -6,7 +6,7 @@ import com.google.gson.JsonObject;
 
 import java.util.Map;
 
-public class ModInfoAdapter {
+public class MetadataAdapter {
 
     private static final Map<String, String> MOD_INFO = ImmutableMap.<String, String>builder()
             .put("modId", "id")

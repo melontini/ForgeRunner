@@ -3,6 +3,7 @@ package me.melontini.forgerunner.loader;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import me.melontini.forgerunner.loader.adapt.ModAdapter;
+import me.melontini.forgerunner.util.Exceptions;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.impl.FabricLoaderImpl;
 import net.fabricmc.loader.impl.ModContainerImpl;
@@ -25,19 +26,41 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 //Close your eyes
 @Slf4j
 public class ModInjector {
 
+    private static final Supplier<List<ModContainerImpl>> MODS = Exceptions.uncheck(() -> {
+        Field modsField = FabricLoaderImpl.class.getDeclaredField("mods");
+        modsField.setAccessible(true);
+        return () -> (List<ModContainerImpl>) Exceptions.uncheck(() -> modsField.get(FabricLoaderImpl.INSTANCE));
+    });
+    private static final Supplier<Map<String, ModContainerImpl>> MOD_MAP = Exceptions.uncheck(() -> {
+        Field modMapField = FabricLoaderImpl.class.getDeclaredField("modMap");
+        modMapField.setAccessible(true);
+        return () -> (Map<String, ModContainerImpl>) Exceptions.uncheck(() -> modMapField.get(FabricLoaderImpl.INSTANCE));
+    });
     private static final List<ModContainerImpl> FORGE_MODS = new ArrayList<>();
 
     @SneakyThrows
     public static void inject() {
+        List<ModContainerImpl> mods = MODS.get();//Can't be modified, due to ConcurrentModificationException
+        Map<String, ModContainerImpl> modMap = MOD_MAP.get();
+        for (ModContainerImpl mod : FabricLoaderImpl.INSTANCE.getModsInternal()) {
+            modMap.putIfAbsent(mod.getMetadata().getId().replace("-", "_"), mod);
+            //Some mods use hyphens in their ID on Fabric and underscores on Forge, so we link hyphens with underscores.
+        }
+
         ModDiscoverer discoverer = new ModDiscoverer(new VersionOverrides(), new DependencyOverrides(FabricLoader.getInstance().getGameDir()));
         discoverer.addCandidateFinder(new DirectoryModCandidateFinder(ModAdapter.REMAPPED_MODS, FabricLoader.getInstance().isDevelopmentEnvironment()));
         List<ModCandidate> candidates = discoverer.discoverMods(FabricLoaderImpl.INSTANCE, Map.of());
-        candidates.removeIf(ModCandidate::isBuiltin);
+        candidates.removeIf(candidate -> candidate.isBuiltin() || FabricLoader.getInstance().isModLoaded(candidate.getId()));
+        if (candidates.isEmpty()) {
+            log.info("No Forge mods found");
+            return;
+        }
 
         Path cacheDir = FabricLoader.getInstance().getGameDir().resolve(FabricLoaderImpl.CACHE_DIR_NAME);
         Path outputdir = cacheDir.resolve("processedForgeMods");
@@ -49,18 +72,10 @@ public class ModInjector {
             }
         }
 
-        log.info("Loading {} Forge mods", candidates.size());
         Method m = FabricLoaderImpl.class.getDeclaredMethod("dumpModList", List.class);
         m.setAccessible(true);
         m.invoke(FabricLoaderImpl.INSTANCE, candidates);
 
-        Field modsField = FabricLoaderImpl.class.getDeclaredField("mods");
-        modsField.setAccessible(true);
-        List<ModContainerImpl> mods = (List<ModContainerImpl>) modsField.get(FabricLoaderImpl.INSTANCE);
-
-        Field modMapField = FabricLoaderImpl.class.getDeclaredField("modMap");
-        modMapField.setAccessible(true);
-        Map<String, ModContainerImpl> modMap = (Map<String, ModContainerImpl>) modMapField.get(FabricLoaderImpl.INSTANCE);
         for (ModCandidate mod : candidates) {
             if (!mod.hasPath() && !mod.isBuiltin()) {
                 try {
@@ -87,6 +102,9 @@ public class ModInjector {
 
         List<ModContainerImpl> mergedMods = new ArrayList<>(mods);
         mergedMods.addAll(FORGE_MODS);
+
+        Field modsField = FabricLoaderImpl.class.getDeclaredField("mods");
+        modsField.setAccessible(true);
         modsField.set(FabricLoaderImpl.INSTANCE, mergedMods);
     }
 }

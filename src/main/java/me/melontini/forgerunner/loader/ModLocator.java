@@ -45,7 +45,7 @@ public class ModLocator {
                 guaranteedFabric.addAll(allMod.getOrigin().getPaths());
             }
         }
-        log.info("Found {} guaranteed Fabric mods", guaranteedFabric.size());
+        log.info("Found {} guaranteed Fabric mod" + (guaranteedFabric.size() == 1 ? "" : "s"), guaranteedFabric.size());
 
         List<JarPath> candidates = new ArrayList<>();
         Files.walkFileTree(mods, new SimpleFileVisitor<>() {
@@ -58,7 +58,7 @@ public class ModLocator {
             }
         });
         candidates.removeIf(path -> path.jarFile().getEntry("META-INF/mods.toml") == null);
-        log.info("Found {} Forge mods", candidates.size());
+        log.info("Found {} Forge mod candidate" + (candidates.size() == 1 ? "" : "s"), candidates.size());
         return candidates;
     }
 }

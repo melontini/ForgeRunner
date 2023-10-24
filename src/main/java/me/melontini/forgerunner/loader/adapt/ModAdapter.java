@@ -59,11 +59,12 @@ public class ModAdapter {
         for (JarPath jar : jars) {
             Path file = REMAPPED_MODS.resolve(jar.path().getFileName());
             if (Files.exists(file)) return;
+            log.debug("Adapting {}", jar.path().getFileName());
             ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(file));
 
-            ModAdapter remapper = new ModAdapter(jar, zos);
+            ModAdapter remapper = new ModAdapter(jar, zos); //TODO: Adapt ATs
             remapper.excludeJarJar();
-            remapper.remapModToml(gson);
+            remapper.adaptModMetadata(gson);
             remapper.copyManifest();
             remapper.remapMixinConfigs();
             remapper.copyNonClasses();
@@ -122,7 +123,7 @@ public class ModAdapter {
                     zos.putNextEntry(new ZipEntry(refmap));
                     zos.write(refmapObject.toString().getBytes());
                     zos.closeEntry();
-                    log.info("Remapped refmap {}", refmap);
+                    log.debug("Remapped refmap {}", refmap);
                 }
 
                 zos.putNextEntry(new ZipEntry(mixinConfig));
@@ -140,7 +141,7 @@ public class ModAdapter {
     }
 
     @SneakyThrows
-    private void remapModToml(Gson gson) {
+    private void adaptModMetadata(Gson gson) {
         JarEntry entry = jar.jarFile().getJarEntry("META-INF/mods.toml");
         if (entry == null) return;
 
@@ -148,7 +149,7 @@ public class ModAdapter {
         JsonObject forgeMeta = gson.fromJson(JsonFormat.fancyInstance().createWriter().writeToString(cc), JsonObject.class);
         JsonObject fabricMeta = new JsonObject();
 
-        ModInfoAdapter.adapt(fabricMeta, forgeMeta);
+        MetadataAdapter.adapt(fabricMeta, forgeMeta);
         String attr = jar.jarFile().getManifest().getMainAttributes().getValue(Constants.ManifestAttributes.MIXINCONFIGS);
         if (attr != null) {
             String[] config = attr.split(",");
