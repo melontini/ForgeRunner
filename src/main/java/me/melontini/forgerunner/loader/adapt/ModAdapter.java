@@ -92,9 +92,7 @@ public class ModAdapter {
         for (JarPath jar : jars) {
             log.debug("Adapting {}", jar.path().getFileName());
             Path file = REMAPPED_MODS.resolve(jar.path().getFileName());
-            try {
-                ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(file));
-
+            try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(file))) {
                 ModAdapter adapter = new ModAdapter(jar, zos); //TODO: Adapt ATs
                 adapter.excludeJarJar();
                 adapter.copyManifest();
@@ -102,12 +100,11 @@ public class ModAdapter {
                 adapter.transformClasses(localClasses.get(jar));
                 adapter.adaptModMetadata(gson);
                 adapter.copyNonClasses();
-
-                zos.close();
-                jar.jarFile().close();
             } catch (Throwable t) {
                 log.error("Failed to adapt mod " + jar.path().getFileName(), t);
                 Files.deleteIfExists(file);
+            } finally {
+                jar.jarFile().close();
             }
         }
 
