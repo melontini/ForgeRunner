@@ -64,33 +64,31 @@ public class ModAdapter {
         jars = jars.stream().filter(jar -> !Files.exists(REMAPPED_MODS.resolve(jar.path().getFileName()))).toList();
         if (jars.isEmpty()) return;
 
-        MixinHacks.bootstrap();
-
-        Gson gson = new Gson();
-        Map<String, byte[]> classMap = new HashMap<>();
-        for (JarPath jar : jars) {
-            jar.jarFile().stream().filter(jarEntry -> jarEntry.getRealName().endsWith(".class"))
-                    .forEach(jarEntry -> Exceptions.uncheck(() -> classMap.put(jarEntry.getRealName().replace(".class", ""), jar.jarFile().getInputStream(jarEntry).readAllBytes())));
-        }
-
-        IClassBytecodeProvider current = MixinService.getService().getBytecodeProvider();
-        IMixinService currentService = MixinService.getService();
-        MixinHacks.crackMixinBytecodeProvider(current, currentService, classMap);
-
         IMappingProvider provider = TinyUtils.createTinyMappingProvider(Files.newBufferedReader(FabricLoader.getInstance().getModContainer("forgerunner").orElseThrow().findPath("data/forgerunner/mappings_1.20.1.tiny").orElseThrow()), "searge", "intermediary");
         TinyRemapper remapper = TinyRemapper.newRemapper()
                 .withMappings(provider).renameInvalidLocals(false).build();
 
+        Map<String, byte[]> classMap = new HashMap<>();
         Map<JarPath, Map<String, byte[]>> localClasses = new HashMap<>();
+
         Map<InputTag, JarPath> tags = new HashMap<>();
         for (JarPath jar : jars) {
             InputTag tag = remapper.createInputTag();
             tags.put(tag, jar);
             remapper.readInputsAsync(tag, jar.path());
         }
-        tags.forEach((tag, jarPath) -> remapper.apply((s, bytes) -> localClasses.computeIfAbsent(tags.get(tag), jarPath1 -> new HashMap<>()).put(s, bytes), tag));
+        tags.forEach((tag, jarPath) -> remapper.apply((s, bytes) -> {
+            classMap.put(s, bytes);
+            localClasses.computeIfAbsent(tags.get(tag), jarPath1 -> new HashMap<>()).put(s, bytes);
+        }, tag));
         remapper.finish();
 
+        MixinHacks.bootstrap();
+        IClassBytecodeProvider current = MixinService.getService().getBytecodeProvider();
+        IMixinService currentService = MixinService.getService();
+        MixinHacks.crackMixinBytecodeProvider(current, currentService, classMap);
+
+        Gson gson = new Gson();
         for (JarPath jar : jars) {
             log.debug("Adapting {}", jar.path().getFileName());
             Path file = REMAPPED_MODS.resolve(jar.path().getFileName());
