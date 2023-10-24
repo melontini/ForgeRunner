@@ -34,6 +34,10 @@ What needs to be done:
 
 If you want a working version of this, checkout [Sinytra Connector](https://github.com/Sinytra/Connector). As, unlike this, you can actually play with it right now!
 
+You can also check out [Kilt](https://github.com/KiltMC/Kilt)! It's also a Forge on Fabric project!
+
 ***
 
-Includes [Night Config](https://github.com/TheElectronWill/night-config) licensed under [GNU Lesser General Public License v3.0](https://github.com/TheElectronWill/night-config/blob/master/LICENSE)
+Includes: 
+- [Night Config](https://github.com/TheElectronWill/night-config) licensed under [GNU Lesser General Public License v3.0](https://github.com/TheElectronWill/night-config/blob/master/LICENSE)
+- .tiny srg -> intermediary mappings file generated using [srg2intermediary](https://github.com/KiltMC/srg2intermediary)

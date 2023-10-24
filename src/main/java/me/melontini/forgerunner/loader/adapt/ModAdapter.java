@@ -12,6 +12,10 @@ import me.melontini.forgerunner.loader.MixinHacks;
 import me.melontini.forgerunner.util.Exceptions;
 import me.melontini.forgerunner.util.JarPath;
 import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.tinyremapper.IMappingProvider;
+import net.fabricmc.tinyremapper.InputTag;
+import net.fabricmc.tinyremapper.TinyRemapper;
+import net.fabricmc.tinyremapper.TinyUtils;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
@@ -57,6 +61,9 @@ public class ModAdapter {
 
     @SneakyThrows
     public static void start(List<JarPath> jars) {
+        jars = jars.stream().filter(jar -> !Files.exists(REMAPPED_MODS.resolve(jar.path().getFileName()))).toList();
+        if (jars.isEmpty()) return;
+
         MixinHacks.bootstrap();
 
         Gson gson = new Gson();
@@ -70,43 +77,65 @@ public class ModAdapter {
         IMixinService currentService = MixinService.getService();
         MixinHacks.crackMixinBytecodeProvider(current, currentService, classMap);
 
+        IMappingProvider provider = TinyUtils.createTinyMappingProvider(Files.newBufferedReader(FabricLoader.getInstance().getModContainer("forgerunner").orElseThrow().findPath("data/forgerunner/mappings_1.20.1.tiny").orElseThrow()), "searge", "intermediary");
+        TinyRemapper remapper = TinyRemapper.newRemapper()
+                .withMappings(provider).renameInvalidLocals(false).build();
+
+        Map<JarPath, Map<String, byte[]>> localClasses = new HashMap<>();
+        Map<InputTag, JarPath> tags = new HashMap<>();
+        for (JarPath jar : jars) {
+            InputTag tag = remapper.createInputTag();
+            tags.put(tag, jar);
+            remapper.readInputsAsync(tag, jar.path());
+        }
+        tags.forEach((tag, jarPath) -> remapper.apply((s, bytes) -> localClasses.computeIfAbsent(tags.get(tag), jarPath1 -> new HashMap<>()).put(s, bytes), tag));
+        remapper.finish();
+
         for (JarPath jar : jars) {
             log.debug("Adapting {}", jar.path().getFileName());
             Path file = REMAPPED_MODS.resolve(jar.path().getFileName());
-            if (Files.exists(file)) continue;
-            ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(file));
+            try {
+                ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(file));
 
-            ModAdapter remapper = new ModAdapter(jar, zos); //TODO: Adapt ATs
-            remapper.excludeJarJar();
-            remapper.copyManifest();
-            remapper.remapMixinConfigs();
-            remapper.transformClasses();
-            remapper.adaptModMetadata(gson);
-            remapper.copyNonClasses();
+                ModAdapter adapter = new ModAdapter(jar, zos); //TODO: Adapt ATs
+                adapter.excludeJarJar();
+                adapter.copyManifest();
+                adapter.remapMixinConfigs();
+                adapter.transformClasses(localClasses.get(jar));
+                adapter.adaptModMetadata(gson);
+                adapter.copyNonClasses();
 
-            zos.close();
-            jar.jarFile().close();
+                zos.close();
+                jar.jarFile().close();
+            } catch (Throwable t) {
+                log.error("Failed to adapt mod " + jar.path().getFileName(), t);
+                Files.deleteIfExists(file);
+            }
         }
 
         MixinHacks.uncrackMixinService(currentService, classMap);
     }
 
-    private void transformClasses() {
-        jar.jarFile().stream().filter(jarEntry -> jarEntry.getRealName().endsWith(".class") && !excludedEntries.contains(jarEntry.getRealName()))
-                .forEach(jarEntry -> Exceptions.uncheck(() -> {
-                    byte[] bytes = jar.jarFile().getInputStream(jarEntry).readAllBytes();
-                    ClassNode node = new ClassNode();
-                    ClassReader reader = new ClassReader(bytes);
-                    reader.accept(node, 0);
+    private void transformClasses(Map<String, byte[]> localClasses) {
+        localClasses.forEach((s, bytes) -> Exceptions.uncheck(() -> {
+            ClassNode node = new ClassNode();
+            ClassReader reader = new ClassReader(bytes);
+            reader.accept(node, 0);
 
-                    ClassAdapter.adapt(node, this);
+            boolean modified = ClassAdapter.adapt(node, this);
 
-                    MixinClassWriter writer = new MixinClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-                    node.accept(writer);
-                    zos.putNextEntry(new ZipEntry(jarEntry.getRealName()));
-                    zos.write(writer.toByteArray());
-                    zos.closeEntry();
-                }));
+            if (modified) {
+                MixinClassWriter writer = new MixinClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+                node.accept(writer);
+                zos.putNextEntry(new ZipEntry(node.name + ".class"));
+                zos.write(writer.toByteArray());
+                zos.closeEntry();
+            } else {//No point in writing the class if it wasn't modified
+                zos.putNextEntry(new ZipEntry(node.name + ".class"));
+                zos.write(bytes);
+                zos.closeEntry();
+            }
+        }));
     }
 
     private void copyNonClasses() {
@@ -162,12 +191,11 @@ public class ModAdapter {
         if (entry == null) return;
 
         CommentedConfig cc = TomlFormat.instance().createParser().parse(jar.jarFile().getInputStream(entry));
-        JsonObject forgeMeta = gson.fromJson(JsonFormat.fancyInstance().createWriter().writeToString(cc), JsonObject.class);
+        JsonObject forgeMeta = gson.fromJson(JsonFormat.minimalInstance().createWriter().writeToString(cc), JsonObject.class);
         JsonObject fabricMeta = new JsonObject();
 
         MetadataAdapter.adapt(fabricMeta, forgeMeta, this);
 
-        log.info(fabricMeta.toString());
         zos.putNextEntry(new JarEntry("fabric.mod.json"));
         zos.write(fabricMeta.toString().getBytes());
         zos.closeEntry();
