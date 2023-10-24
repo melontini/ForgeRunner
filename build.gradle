@@ -42,6 +42,18 @@ processResources {
     }
 }
 
+tasks.register('printVersionName') {
+    doLast {
+        println version
+    }
+}
+
+tasks.register('printVersion') {
+    doLast {
+        println version
+    }
+}
+
 def targetJavaVersion = 17
 tasks.withType(JavaCompile).configureEach {
     // ensure that the encoding is set to UTF-8, no matter what the system default is
