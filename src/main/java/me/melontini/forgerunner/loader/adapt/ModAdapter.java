@@ -12,9 +12,12 @@ import lombok.extern.slf4j.Slf4j;
 import me.melontini.forgerunner.util.Exceptions;
 import me.melontini.forgerunner.util.JarPath;
 import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.impl.launch.knot.MixinServiceKnot;
+import net.fabricmc.loader.impl.launch.knot.MixinServiceKnotBootstrap;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
+import org.spongepowered.asm.launch.MixinBootstrap;
 import org.spongepowered.asm.transformers.MixinClassWriter;
 import org.spongepowered.asm.util.Constants;
 
@@ -55,6 +58,15 @@ public class ModAdapter {
 
     @SneakyThrows
     public static void start(List<JarPath> jars) {
+        System.setProperty("mixin.bootstrapService", MixinServiceKnotBootstrap.class.getName());
+        System.setProperty("mixin.service", MixinServiceKnot.class.getName());
+
+        try {
+            MixinBootstrap.init();//Let's pray this doesn't break something.
+        } catch (Throwable t) {
+            log.error("FAILED TO BOOTSTRAP MIXIN SERVICE EARLY!!!!", t);
+        }
+
         Gson gson = new Gson();
         for (JarPath jar : jars) {
             Path file = REMAPPED_MODS.resolve(jar.path().getFileName());
@@ -85,7 +97,7 @@ public class ModAdapter {
 
                     ClassAdapter.adapt(node);
 
-                    MixinClassWriter writer = new MixinClassWriter(ClassWriter.COMPUTE_MAXS/* | ClassWriter.COMPUTE_FRAMES*/); //TODO wake up service earlier?
+                    MixinClassWriter writer = new MixinClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
                     node.accept(writer);
                     zos.putNextEntry(new ZipEntry(jarEntry.getRealName()));
                     zos.write(writer.toByteArray());
