@@ -3,6 +3,8 @@ package me.melontini.forgerunner.loader.adapt;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import lombok.SneakyThrows;
+import org.spongepowered.asm.util.Constants;
 
 import java.util.Map;
 
@@ -19,7 +21,7 @@ public class MetadataAdapter {
 
     //TODO: dependencies.
     //TODO: environment.
-    static void adapt(JsonObject fabric, JsonObject forge) {
+    static void adapt(JsonObject fabric, JsonObject forge, ModAdapter adapter) {
         JsonArray modInfoArray = forge.get("mods").getAsJsonArray();
         if (modInfoArray.size() > 1) {
             throw new IllegalStateException("Multiple mods in a single jar file are not supported (yet?)");
@@ -34,6 +36,32 @@ public class MetadataAdapter {
         JsonObject contact = new JsonObject();
         if (forge.has("issueTrackerURL"))
             contact.add("issues", forge.get("issueTrackerURL"));
+        if (forge.has("displayURL"))
+            contact.add("homepage", forge.get("displayURL"));
         fabric.add("contact", contact);
+
+        adaptMixins(adapter, fabric);
+
+        JsonObject entrypoints = new JsonObject();
+        JsonArray main = new JsonArray();
+        adapter.getEntrypointClasses().forEach(main::add);
+        entrypoints.add("main", main);
+        fabric.add("entrypoints", entrypoints);
+    }
+
+    @SneakyThrows
+    private static void adaptMixins(ModAdapter adapter, JsonObject fabric) {
+        String attr = adapter.getJarFile().getManifest().getMainAttributes().getValue(Constants.ManifestAttributes.MIXINCONFIGS);
+        if (attr != null) {
+            String[] config = attr.split(",");
+            JsonArray mixins = new JsonArray();
+            for (String mixin : config) {
+                if (adapter.getJarFile().getJarEntry(mixin) == null)
+                    continue; //To work around some mods including configs from others.
+                mixins.add(mixin);
+                adapter.addMixinConfig(mixin);
+            }
+            fabric.add("mixins", mixins);
+        }
     }
 }

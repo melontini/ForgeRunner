@@ -4,7 +4,6 @@ import com.electronwill.nightconfig.core.CommentedConfig;
 import com.electronwill.nightconfig.json.JsonFormat;
 import com.electronwill.nightconfig.toml.TomlFormat;
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import lombok.SneakyThrows;
@@ -19,16 +18,17 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.launch.MixinBootstrap;
 import org.spongepowered.asm.transformers.MixinClassWriter;
-import org.spongepowered.asm.util.Constants;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -45,6 +45,7 @@ public class ModAdapter {
     private final ZipOutputStream zos;
     private final Set<String> excludedEntries = new HashSet<>();
     private final Set<String> mixinConfigs = new HashSet<>();
+    private final Set<String> mainEntrypoint = new HashSet<>();
 
     private ModAdapter(JarPath jar, ZipOutputStream zos) {
         this.jar = jar;
@@ -76,11 +77,11 @@ public class ModAdapter {
 
             ModAdapter remapper = new ModAdapter(jar, zos); //TODO: Adapt ATs
             remapper.excludeJarJar();
-            remapper.adaptModMetadata(gson);
             remapper.copyManifest();
             remapper.remapMixinConfigs();
-            remapper.copyNonClasses();
             remapper.transformClasses();
+            remapper.adaptModMetadata(gson);
+            remapper.copyNonClasses();
 
             zos.close();
             jar.jarFile().close();
@@ -95,7 +96,7 @@ public class ModAdapter {
                     ClassReader reader = new ClassReader(bytes);
                     reader.accept(node, 0);
 
-                    ClassAdapter.adapt(node);
+                    ClassAdapter.adapt(node, this);
 
                     MixinClassWriter writer = new MixinClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
                     node.accept(writer);
@@ -161,19 +162,7 @@ public class ModAdapter {
         JsonObject forgeMeta = gson.fromJson(JsonFormat.fancyInstance().createWriter().writeToString(cc), JsonObject.class);
         JsonObject fabricMeta = new JsonObject();
 
-        MetadataAdapter.adapt(fabricMeta, forgeMeta);
-        String attr = jar.jarFile().getManifest().getMainAttributes().getValue(Constants.ManifestAttributes.MIXINCONFIGS);
-        if (attr != null) {
-            String[] config = attr.split(",");
-            JsonArray mixins = new JsonArray();
-            for (String mixin : config) {
-                if (jar.jarFile().getJarEntry(mixin) == null)
-                    continue; //To work around some mods including configs from others.
-                mixins.add(mixin);
-                this.mixinConfigs.add(mixin);
-            }
-            fabricMeta.add("mixins", mixins);
-        }
+        MetadataAdapter.adapt(fabricMeta, forgeMeta, this);
 
         log.info(fabricMeta.toString());
         zos.putNextEntry(new JarEntry("fabric.mod.json"));
@@ -184,5 +173,21 @@ public class ModAdapter {
     private void excludeJarJar() {
         jar.jarFile().stream().filter(jarEntry -> jarEntry.getRealName().startsWith("META-INF/jarjar"))
                 .forEach(jarEntry -> this.excludedEntries.add(jarEntry.getRealName()));
+    }
+
+    void addMixinConfig(String mixinConfig) {
+        this.mixinConfigs.add(mixinConfig);
+    }
+
+    void addEntrypointClass(String cls) {
+        this.mainEntrypoint.add(cls.replace("/", "."));
+    }
+
+    Set<String> getEntrypointClasses() {
+        return Collections.unmodifiableSet(this.mainEntrypoint);
+    }
+
+    JarFile getJarFile() {
+        return jar.jarFile();
     }
 }
