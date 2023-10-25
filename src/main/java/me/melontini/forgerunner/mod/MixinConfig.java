@@ -14,7 +14,7 @@ public class MixinConfig implements ByteConvertible {
     }
 
     public String getRefMap() {
-        return backing.get("refmap").getAsString();
+        return backing.has("refmap") ? backing.get("refmap").getAsString() : null;
     }
 
     @Override

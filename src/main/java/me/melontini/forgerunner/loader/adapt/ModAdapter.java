@@ -123,6 +123,7 @@ public class ModAdapter {
             if (config == null) continue;
 
             String refmapFile = config.getRefMap();
+            if (refmapFile == null) continue;
             ByteConvertible refmap = file.getFile(refmapFile);
             if (refmap == null) continue;
 
