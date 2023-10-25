@@ -4,8 +4,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import lombok.extern.slf4j.Slf4j;
+import me.melontini.forgerunner.loader.remapping.ForgeRunnerRemapper;
 import me.melontini.forgerunner.loader.remapping.SrgRemapper;
-import net.fabricmc.tinyremapper.api.TrRemapper;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -13,7 +13,7 @@ import java.util.Map;
 @Slf4j
 public class RefmapRemapper {
 
-    public static void remap(JsonObject object, TrRemapper remapper) {
+    public static void remap(JsonObject object, ForgeRunnerRemapper remapper) {
         JsonObject mappings = object.get("mappings").getAsJsonObject();
         for (Map.Entry<String, JsonElement> entry : mappings.entrySet()) {
             if (entry.getValue() instanceof JsonObject jo) {
@@ -44,7 +44,7 @@ public class RefmapRemapper {
         data.add("named:intermediary", searge);
     }
 
-    private static String remapRef(String reference, TrRemapper remapper) {
+    private static String remapRef(String reference, ForgeRunnerRemapper remapper) {
         String owner = null;
         if (reference.startsWith("L")) {
             owner = reference.substring(0, reference.indexOf(";") + 1);
@@ -61,7 +61,7 @@ public class RefmapRemapper {
         else return remapper.mapType(reference);
     }
 
-    private static String remapField(String owner, String name, String desc, TrRemapper remapper) {
+    private static String remapField(String owner, String name, String desc, ForgeRunnerRemapper remapper) {
         String top = SrgRemapper.getMethodOwner(name, desc);
 
         String s = top != null ? top : owner != null ? owner.substring(1, owner.length() - 1) : "";
@@ -72,7 +72,7 @@ public class RefmapRemapper {
         return mappedOwner + name + ":" + desc;
     }
 
-    private static String remapMethod(String owner, String name, String desc, TrRemapper remapper) {
+    private static String remapMethod(String owner, String name, String desc, ForgeRunnerRemapper remapper) {
         String top = SrgRemapper.getMethodOwner(name, desc);
 
         String s = top != null ? top : owner != null ? owner.substring(1, owner.length() - 1) : "";

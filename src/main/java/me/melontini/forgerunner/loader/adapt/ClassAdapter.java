@@ -1,31 +1,28 @@
 package me.melontini.forgerunner.loader.adapt;
 
+import lombok.extern.slf4j.Slf4j;
+import me.melontini.forgerunner.mod.ModFile;
 import me.melontini.forgerunner.patches.Patch;
-import net.fabricmc.loader.api.FabricLoader;
 import org.objectweb.asm.tree.ClassNode;
 
 import java.util.HashSet;
+import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.function.Supplier;
 
+@Slf4j
 public class ClassAdapter {
 
     private static final Set<Patch> PATCHES = new HashSet<>();
 
-    public static void addPatch(Patch patch) {
-        PATCHES.add(patch);
-    }
-
-    public static boolean adapt(ClassNode node, ModAdapter adapter) {
-        boolean modified = false;
+    public static void adapt(ClassNode node, ModFile file) {
         for (Patch patch : PATCHES) {
-            modified |= patch.patch(node, adapter);
+            patch.patch(node, file);
         }
-        return modified;
     }
 
     static {
-        FabricLoader.getInstance().invokeEntrypoints("forgerunner:patches", Supplier.class,
-                supplier -> PATCHES.add(((Supplier<Patch>) supplier).get()));
+        for (Patch patch : ServiceLoader.load(Patch.class)) {
+            PATCHES.add(patch);
+        }
     }
 }
