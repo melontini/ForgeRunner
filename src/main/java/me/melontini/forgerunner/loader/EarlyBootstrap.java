@@ -29,6 +29,7 @@ public class EarlyBootstrap implements LanguageAdapter {
             log.error("FAILED TO UNLOCK KNOT!!!", t);
         }
 
+        TinyResolver.load();
         List<JarPath> forgeMods = ModLocator.start();
         ModAdapter.start(forgeMods);
         ModInjector.inject();

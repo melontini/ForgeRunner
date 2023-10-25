@@ -16,6 +16,7 @@ import net.fabricmc.tinyremapper.IMappingProvider;
 import net.fabricmc.tinyremapper.InputTag;
 import net.fabricmc.tinyremapper.TinyRemapper;
 import net.fabricmc.tinyremapper.TinyUtils;
+import net.fabricmc.tinyremapper.api.TrRemapper;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
@@ -81,7 +82,6 @@ public class ModAdapter {
             classMap.put(s, bytes);
             localClasses.computeIfAbsent(tags.get(tag), jarPath1 -> new HashMap<>()).put(s, bytes);
         }, tag));
-        remapper.finish();
 
         MixinHacks.bootstrap();
         IClassBytecodeProvider current = MixinService.getService().getBytecodeProvider();
@@ -96,9 +96,9 @@ public class ModAdapter {
                 ModAdapter adapter = new ModAdapter(jar, zos); //TODO: Adapt ATs
                 adapter.excludeJarJar();
                 adapter.copyManifest();
-                adapter.remapMixinConfigs();
                 adapter.transformClasses(localClasses.get(jar));
                 adapter.adaptModMetadata(gson);
+                adapter.remapMixinConfigs(remapper.getEnvironment().getRemapper());
                 adapter.copyNonClasses();
             } catch (Throwable t) {
                 log.error("Failed to adapt mod " + jar.path().getFileName(), t);
@@ -107,6 +107,7 @@ public class ModAdapter {
                 jar.jarFile().close();
             }
         }
+        remapper.finish();
 
         MixinHacks.uncrackMixinService(currentService, classMap);
     }
@@ -143,7 +144,7 @@ public class ModAdapter {
     }
 
     @SneakyThrows
-    private void remapMixinConfigs() {
+    private void remapMixinConfigs(TrRemapper remapper) {
         for (String mixinConfig : mixinConfigs) {
             JarEntry entry = jar.jarFile().getJarEntry(mixinConfig);
             if (entry == null) continue;
@@ -159,7 +160,7 @@ public class ModAdapter {
 
                 try (InputStream is2 = jar.jarFile().getInputStream(refmapEntry)) {
                     JsonObject refmapObject = JsonParser.parseReader(new InputStreamReader(is2)).getAsJsonObject();
-                    RefmapRemapper.remap(refmapObject);
+                    RefmapRemapper.remap(refmapObject, remapper);
                     zos.putNextEntry(new ZipEntry(refmap));
                     zos.write(refmapObject.toString().getBytes());
                     zos.closeEntry();
