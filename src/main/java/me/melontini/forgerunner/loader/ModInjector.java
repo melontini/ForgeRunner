@@ -2,7 +2,6 @@ package me.melontini.forgerunner.loader;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import me.melontini.forgerunner.loader.adapt.ModAdapter;
 import me.melontini.forgerunner.util.Loader;
 import net.fabricmc.loader.impl.ModContainerImpl;
 import net.fabricmc.loader.impl.discovery.DirectoryModCandidateFinder;
@@ -40,7 +39,7 @@ public class ModInjector {
         }
 
         ModDiscoverer discoverer = new ModDiscoverer(new VersionOverrides(), new DependencyOverrides(Loader.getInstance().getGameDir()));
-        discoverer.addCandidateFinder(new DirectoryModCandidateFinder(ModAdapter.REMAPPED_MODS, Loader.getInstance().isDevelopmentEnvironment()));
+        discoverer.addCandidateFinder(new DirectoryModCandidateFinder(Loader.REMAPPED_MODS, Loader.getInstance().isDevelopmentEnvironment()));
         List<ModCandidate> candidates = discoverer.discoverMods(Loader.getInstance(), Map.of());
         candidates.removeIf(candidate -> candidate.isBuiltin() || Loader.getInstance().isModLoaded(candidate.getId()));
         if (candidates.isEmpty()) {

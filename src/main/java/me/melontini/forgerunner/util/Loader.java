@@ -1,12 +1,17 @@
 package me.melontini.forgerunner.util;
 
 import lombok.SneakyThrows;
+import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.impl.FabricLoaderImpl;
 import net.fabricmc.loader.impl.ModContainerImpl;
 import net.fabricmc.loader.impl.discovery.ModCandidate;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +19,9 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class Loader {
+
+    public static final Path REMAPPED_MODS = FabricLoader.getInstance().getGameDir().resolve(".remapped_forge_mods");
+    public static final Path HIDDEN_FOLDER = FabricLoader.getInstance().getGameDir().resolve(".forgerunner");
 
     private static final Supplier<List<ModContainerImpl>> MODS = Exceptions.uncheck(() -> {
         Field modsField = FabricLoaderImpl.class.getDeclaredField("mods");
@@ -35,6 +43,23 @@ public class Loader {
         m.setAccessible(true);
         return mods -> Exceptions.uncheck(() -> m.invoke(Loader.getInstance(), mods));
     });
+
+    static {
+        Exceptions.uncheck(() -> {
+            if (!Files.exists(REMAPPED_MODS))
+                Files.createDirectories(REMAPPED_MODS);
+        });
+        Exceptions.uncheck(() -> {
+            if (!Files.exists(HIDDEN_FOLDER)) {
+                Files.createDirectories(HIDDEN_FOLDER);
+                try {
+                    if (HIDDEN_FOLDER.getFileSystem().supportedFileAttributeViews().contains("dos"))
+                        Files.setAttribute(HIDDEN_FOLDER, "dos:hidden", Boolean.TRUE, LinkOption.NOFOLLOW_LINKS);
+                } catch (IOException ignored) {
+                }
+            }
+        });
+    }
 
     public static void appendMods(List<ModContainerImpl> mods) {
         List<ModContainerImpl> mergedMods = new ArrayList<>(getMods());

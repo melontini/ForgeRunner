@@ -2,7 +2,7 @@ package me.melontini.forgerunner.loader.remapping;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import net.fabricmc.loader.api.FabricLoader;
+import me.melontini.forgerunner.util.Loader;
 import net.fabricmc.mapping.tree.ClassDef;
 import net.fabricmc.mapping.tree.Descriptored;
 import net.fabricmc.mapping.tree.TinyMappingFactory;
@@ -23,7 +23,7 @@ public class SrgRemapper {
 
     @SneakyThrows
     public static void load() {
-        TinyTree tree = TinyMappingFactory.loadWithDetection(Files.newBufferedReader(FabricLoader.getInstance().getModContainer("forgerunner").orElseThrow().findPath("data/forgerunner/mappings_1.20.1.tiny").orElseThrow()));
+        TinyTree tree = TinyMappingFactory.loadWithDetection(Files.newBufferedReader(Loader.HIDDEN_FOLDER.resolve("mappings.tiny")));
 
         NamespaceData data = new NamespaceData();
         Map<String, String> classNameMap = new HashMap<>();

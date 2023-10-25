@@ -11,9 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import me.melontini.forgerunner.loader.MixinHacks;
 import me.melontini.forgerunner.loader.remapping.ForgeRunnerRemapper;
 import me.melontini.forgerunner.mod.*;
-import me.melontini.forgerunner.util.Exceptions;
 import me.melontini.forgerunner.util.JarPath;
-import net.fabricmc.loader.api.FabricLoader;
+import me.melontini.forgerunner.util.Loader;
 import net.fabricmc.loader.impl.gui.FabricGuiEntry;
 import net.fabricmc.tinyremapper.IMappingProvider;
 import net.fabricmc.tinyremapper.TinyRemapper;
@@ -40,18 +39,12 @@ import java.util.zip.ZipOutputStream;
 @Slf4j
 public class ModAdapter {
 
-    public static final Path REMAPPED_MODS = FabricLoader.getInstance().getGameDir().resolve(".remapped_forge_mods");
-
-    static {
-        Exceptions.uncheck(() -> Files.createDirectories(REMAPPED_MODS));
-    }
-
     @SneakyThrows
     public static void start(List<JarPath> jars) {
-        jars = jars.stream().filter(jar -> !Files.exists(REMAPPED_MODS.resolve(jar.path().getFileName()))).toList();
+        jars = jars.stream().filter(jar -> !Files.exists(Loader.REMAPPED_MODS.resolve(jar.path().getFileName()))).toList();
         if (jars.isEmpty()) return;
 
-        IMappingProvider provider = TinyUtils.createTinyMappingProvider(Files.newBufferedReader(FabricLoader.getInstance().getModContainer("forgerunner").orElseThrow().findPath("data/forgerunner/mappings_1.20.1.tiny").orElseThrow()), "searge", "intermediary");
+        IMappingProvider provider = TinyUtils.createTinyMappingProvider(Files.newBufferedReader(Loader.HIDDEN_FOLDER.resolve("mappings.tiny")), "searge", "intermediary");
         TinyRemapper remapper = TinyRemapper.newRemapper()
                 .withMappings(provider).renameInvalidLocals(false).build();
 
@@ -77,7 +70,7 @@ public class ModAdapter {
         Gson gson = new Gson();
         for (ModFile modFile : modFiles) {
             log.debug("Adapting {}", modFile.getJar().path().getFileName());
-            Path file = modFile.getJar().temp() ? null : REMAPPED_MODS.resolve(modFile.getJar().path().getFileName());
+            Path file = modFile.getJar().temp() ? null : Loader.REMAPPED_MODS.resolve(modFile.getJar().path().getFileName());
 
             try {
                 remapMixinConfigs(modFile);
