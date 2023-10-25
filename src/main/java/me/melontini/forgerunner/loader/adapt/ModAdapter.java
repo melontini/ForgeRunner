@@ -60,8 +60,13 @@ public class ModAdapter {
         List<ModFile> modFiles = new ArrayList<>();
         Environment environment = new Environment(new HashMap<>(), modFiles, frr);
         log.info("Preparing modfiles...");
-        for (JarPath jar : new ArrayList<>(jars)) {
-            modFiles.add(new ModFile(jar, environment));
+        try {
+            for (JarPath jar : new ArrayList<>(jars)) {
+                modFiles.add(new ModFile(jar, environment));
+            }
+        } catch (Throwable t) {
+            log.error("Failed to prepare modfiles", t);
+            FabricGuiEntry.displayError("Failed to prepare modfiles", t, true);
         }
 
         MixinHacks.bootstrap();
