@@ -32,9 +32,9 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.zip.ZipOutputStream;
 
 @Slf4j
@@ -55,26 +55,26 @@ public class ModAdapter {
         TinyRemapper remapper = TinyRemapper.newRemapper()
                 .withMappings(provider).renameInvalidLocals(false).build();
 
-        Map<String, byte[]> classMap = new HashMap<>();
-        for (JarPath jar : jars) {
-            jar.jarFile().stream().filter(jarEntry -> jarEntry.getRealName().endsWith(".class"))
-                    .forEach(jarEntry -> Exceptions.uncheck(() -> classMap.put(jarEntry.getRealName().replace(".class", ""), jar.jarFile().getInputStream(jarEntry).readAllBytes())));
+        ForgeRunnerRemapper frr = new ForgeRunnerRemapper(remapper.getEnvironment().getRemapper());
+
+        List<ModFile> modFiles = new ArrayList<>();
+        Environment environment = new Environment(new HashMap<>(), modFiles, frr);
+        log.info("Preparing modfiles...");
+        for (JarPath jar : new ArrayList<>(jars)) {
+            modFiles.add(new ModFile(jar, environment));
         }
 
         MixinHacks.bootstrap();
         IClassBytecodeProvider current = MixinService.getService().getBytecodeProvider();
         IMixinService currentService = MixinService.getService();
-        MixinHacks.crackMixinBytecodeProvider(current, currentService, classMap);
+        MixinHacks.crackMixinBytecodeProvider(current, currentService, environment);
 
-        ForgeRunnerRemapper frr = new ForgeRunnerRemapper(remapper.getEnvironment().getRemapper());
-        Environment environment = new Environment(new HashMap<>(), frr);
         Gson gson = new Gson();
-        for (JarPath jar : jars) {
-            log.debug("Adapting {}", jar.path().getFileName());
-            Path file = REMAPPED_MODS.resolve(jar.path().getFileName());
+        for (ModFile modFile : modFiles) {
+            log.debug("Adapting {}", modFile.getJar().path().getFileName());
+            Path file = REMAPPED_MODS.resolve(modFile.getJar().path().getFileName());
 
             try {
-                ModFile modFile = new ModFile(jar, environment);
                 remapMixinConfigs(modFile);
                 adaptModMetadata(gson, modFile);
                 transformClasses(modFile, frr);
@@ -82,16 +82,16 @@ public class ModAdapter {
                     modFile.writeToJar(zos);
                 }
             } catch (Throwable t) {
-                log.error("Failed to adapt mod " + jar.path().getFileName(), t);
+                log.error("Failed to adapt mod " + modFile.getJar().path().getFileName(), t);
                 Files.deleteIfExists(file);
-                FabricGuiEntry.displayError("Failed to adapt mod " + jar.path().getFileName(), t, true);
+                FabricGuiEntry.displayError("Failed to adapt mod " + modFile.getJar().path().getFileName(), t, true);
             } finally {
-                jar.jarFile().close();
+                modFile.getJar().jarFile().close();
             }
         }
         remapper.finish();
 
-        MixinHacks.uncrackMixinService(currentService, classMap);
+        MixinHacks.uncrackMixinService(currentService, environment);
     }
 
     private static void transformClasses(ModFile modFile, ForgeRunnerRemapper frr) {

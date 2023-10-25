@@ -18,6 +18,7 @@ public class ModFile implements ByteConvertible {
 
     private final Map<String, ByteConvertible> files = new HashMap<>();
     private final Map<String, ModClass> classes = new HashMap<>();
+    @Getter
     private final JarPath jar;
     @Getter
     private final Environment environment;

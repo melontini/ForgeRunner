@@ -2,7 +2,11 @@ package me.melontini.forgerunner.loader;
 
 import lombok.extern.slf4j.Slf4j;
 import me.melontini.forgerunner.loader.adapt.ModAdapter;
+import me.melontini.forgerunner.mod.Environment;
+import me.melontini.forgerunner.mod.ModClass;
 import me.melontini.forgerunner.util.Exceptions;
+import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.MappingResolver;
 import net.fabricmc.loader.impl.launch.knot.MixinServiceKnot;
 import net.fabricmc.loader.impl.launch.knot.MixinServiceKnotBootstrap;
 import org.objectweb.asm.ClassReader;
@@ -33,19 +37,23 @@ public class MixinHacks {
         }
     }
 
-    public static void crackMixinBytecodeProvider(IClassBytecodeProvider current, IMixinService currentService, Map<String, byte[]> classMap) {
+    public static void crackMixinBytecodeProvider(IClassBytecodeProvider current, IMixinService currentService, Environment env) {
         IClassBytecodeProvider newProvider = new IClassBytecodeProvider() {
+            final MappingResolver resolver = FabricLoader.getInstance().getMappingResolver();
             @Override public ClassNode getClassNode(String name) throws ClassNotFoundException, IOException {
+                if (name.startsWith("net/minecraft")) name = resolver.mapClassName("intermediary", name.replace("/", ".")).replace(".", "/");
                 try {return current.getClassNode(name);} catch (Throwable t) {return getNode(name);}
             }
 
             @Override public ClassNode getClassNode(String name, boolean runTransformers) throws ClassNotFoundException, IOException {
+                if (name.startsWith("net/minecraft")) name = resolver.mapClassName("intermediary", name.replace("/", ".")).replace(".", "/");
                 try {return current.getClassNode(name, runTransformers);} catch (Throwable t) {return getNode(name);}
             }
 
             private ClassNode getNode(String cls) throws ClassNotFoundException {
-                byte[] bytes = classMap.get(cls.replace(".", "/"));
-                if (bytes == null) throw new ClassNotFoundException();
+                ModClass mc = env.classPool().get(cls.replace(".", "/"));
+                if (mc == null) throw new ClassNotFoundException();
+                byte[] bytes = mc.toBytes();
                 ClassNode node = new ClassNode();
                 ClassReader reader = new ClassReader(bytes);
                 reader.accept(node, 0);
@@ -71,7 +79,7 @@ public class MixinHacks {
         log.info("Sin against the mixin framework was committed");
     }
 
-    public static void uncrackMixinService(IMixinService realService, Map<String, byte[]> classMap) {
+    public static void uncrackMixinService(IMixinService realService, Environment env) {
         Exceptions.uncheck(() -> {
             Method m = MixinService.class.getDeclaredMethod("getInstance");
             m.setAccessible(true);
@@ -86,7 +94,7 @@ public class MixinHacks {
             Field cache = ClassInfo.class.getDeclaredField("cache");
             cache.setAccessible(true);
             Map<String, ClassInfo> cacheMap = (Map<String, ClassInfo>) cache.get(null);
-            classMap.keySet().forEach(cacheMap::remove);
+            env.classPool().keySet().forEach(cacheMap::remove);
         });
         log.info("Sin against the mixin framework was reverted");
     }
