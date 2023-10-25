@@ -2,6 +2,7 @@ package me.melontini.forgerunner.loader;
 
 import lombok.extern.slf4j.Slf4j;
 import me.melontini.forgerunner.loader.adapt.ModAdapter;
+import me.melontini.forgerunner.loader.remapping.SrgRemapper;
 import me.melontini.forgerunner.util.JarPath;
 import me.melontini.forgerunner.util.Loader;
 import net.fabricmc.loader.api.LanguageAdapter;
@@ -29,7 +30,7 @@ public class EarlyBootstrap implements LanguageAdapter {
             log.error("FAILED TO UNLOCK KNOT!!!", t);
         }
 
-        TinyResolver.load();
+        SrgRemapper.load();
         List<JarPath> forgeMods = ModLocator.start();
         ModAdapter.start(forgeMods);
         ModInjector.inject();

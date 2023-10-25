@@ -4,7 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import lombok.extern.slf4j.Slf4j;
-import me.melontini.forgerunner.loader.TinyResolver;
+import me.melontini.forgerunner.loader.remapping.SrgRemapper;
 import net.fabricmc.tinyremapper.api.TrRemapper;
 
 import java.util.HashSet;
@@ -51,19 +51,21 @@ public class RefmapRemapper {
         }
         String left = owner!=null ? reference.replaceFirst(owner, "") : reference;
         if (reference.contains(":")) {
-            return remapField(owner, left.substring(0, left.indexOf(":")), left.substring(left.indexOf(":")), remapper);
+            return remapField(owner, left.substring(0, left.indexOf(":")), left.substring(left.indexOf(":") + 1), remapper);
         }
         if (reference.contains("(")) {
             return remapMethod(owner, left.substring(0, left.indexOf("(")), left.substring(left.indexOf("(")), remapper);
         }
-        return remapper.mapDesc(reference);
+        if ((reference.startsWith("L") || reference.startsWith("[")) && reference.endsWith(";"))
+            return remapper.mapDesc(reference);
+        else return remapper.mapType(reference);
     }
 
     private static String remapField(String owner, String name, String desc, TrRemapper remapper) {
-        String top = TinyResolver.getMethodOwner(name, desc);
+        String top = SrgRemapper.getMethodOwner(name, desc);
 
-        String s = top != null ? top : owner.substring(1, owner.length() - 1);
-        name = TinyResolver.mapFieldName(s.replace("/", "."), name, desc);
+        String s = top != null ? top : owner != null ? owner.substring(1, owner.length() - 1) : "";
+        name = SrgRemapper.mapFieldName(s, name, desc);
         desc = remapper.mapDesc(desc);
 
         String mappedOwner = owner != null ? remapper.mapDesc(owner) : "";
@@ -71,10 +73,10 @@ public class RefmapRemapper {
     }
 
     private static String remapMethod(String owner, String name, String desc, TrRemapper remapper) {
-        String top = TinyResolver.getMethodOwner(name, desc);
+        String top = SrgRemapper.getMethodOwner(name, desc);
 
-        String s = top != null ? top : owner.substring(1, owner.length() - 1);
-        name = TinyResolver.mapMethodName(s.replace("/", "."), name, desc);
+        String s = top != null ? top : owner != null ? owner.substring(1, owner.length() - 1) : "";
+        name = SrgRemapper.mapMethodName(s, name, desc);
         desc = remapper.mapMethodDesc(desc);
 
         String mappedOwner = owner != null ? remapper.mapDesc(owner) : "";

@@ -1,4 +1,4 @@
-package me.melontini.forgerunner.loader;
+package me.melontini.forgerunner.loader.remapping;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +15,7 @@ import java.util.Map;
 
 @Slf4j
 //TODO mapping i.o?
-public class TinyResolver {
+public class SrgRemapper {
 
     private static NamespaceData data;
     private static final Map<Tuple, String> fieldOwnersCache = new HashMap<>();
@@ -40,71 +40,42 @@ public class TinyResolver {
             recordMember(classEntry.getFields(), data.fieldNames, mappedClassName);
             recordMember(classEntry.getMethods(), data.methodNames, mappedClassName);
         }
-        TinyResolver.data = data;
+        SrgRemapper.data = data;
+
+        for (Map.Entry<EntryTriple, String> entry : data.fieldNames.entrySet()) {
+            fieldOwnersCache.put(new Tuple(entry.getKey().name, entry.getKey().desc), entry.getKey().owner.replace(".", "/"));
+        }
+        for (Map.Entry<EntryTriple, String> entry : data.methodNames.entrySet()) {
+            methodOwnersCache.put(new Tuple(entry.getKey().name, entry.getKey().desc), entry.getKey().owner.replace(".", "/"));
+        }
     }
 
     public static String getFieldOwner(String name, String desc) {
-        String owner = fieldOwnersCache.get(new Tuple(name, desc));
-        if (owner == null) {
-            for (Map.Entry<EntryTriple, String> entry : data.fieldNames.entrySet()) {
-                if (entry.getKey().desc.equals(desc) && entry.getKey().name.equals(name)) {
-                    owner = entry.getKey().owner;
-                    fieldOwnersCache.put(new Tuple(name, desc), owner.replace(".", "/"));
-                    return owner;
-                }
-            }
-        }
-        return owner;
+        return fieldOwnersCache.get(new Tuple(name, desc));
     }
 
     public static String getMethodOwner(String name, String desc) {
-        String owner = methodOwnersCache.get(new Tuple(name, desc));
-        if (owner == null) {
-            for (Map.Entry<EntryTriple, String> entry : data.methodNames.entrySet()) {
-                if (entry.getKey().desc.equals(desc) && entry.getKey().name.equals(name)) {
-                    owner = entry.getKey().owner;
-                    methodOwnersCache.put(new Tuple(name, desc), owner.replace(".", "/"));
-                    return owner;
-                }
-            }
-        }
-        return owner;
+        return methodOwnersCache.get(new Tuple(name, desc));
     }
 
     public static String mapClassName(String className) {
-        if (className.indexOf('/') >= 0) {
-            throw new IllegalArgumentException("Class names must be provided in dot format: " + className);
-        }
-
         return data.classNames.getOrDefault(className, className);
     }
 
     public static String unmapClassName(String className) {
-        if (className.indexOf('/') >= 0) {
-            throw new IllegalArgumentException("Class names must be provided in dot format: " + className);
-        }
-
         return data.classNamesInverse.getOrDefault(className, className);
     }
 
     public static String mapFieldName(String owner, String name, String descriptor) {
-        if (owner.indexOf('/') >= 0) {
-            throw new IllegalArgumentException("Class names must be provided in dot format: " + owner);
-        }
-
         return data.fieldNames.getOrDefault(new EntryTriple(owner, name, descriptor), name);
     }
 
     public static String mapMethodName(String owner, String name, String descriptor) {
-        if (owner.indexOf('/') >= 0) {
-            throw new IllegalArgumentException("Class names must be provided in dot format: " + owner);
-        }
-
         return data.methodNames.getOrDefault(new EntryTriple(owner, name, descriptor), name);
     }
 
     private static String mapClassName(Map<String, String> classNameMap, String s) {
-        return classNameMap.computeIfAbsent(s, s1 -> s1.replace('/', '.'));
+        return classNameMap.computeIfAbsent(s, s1 -> s1);
     }
 
     private static  <T extends Descriptored> void recordMember(Collection<T> descriptoredList, Map<EntryTriple, String> putInto, String fromClass) {

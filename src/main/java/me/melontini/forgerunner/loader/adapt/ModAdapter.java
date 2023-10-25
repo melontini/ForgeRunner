@@ -9,16 +9,18 @@ import com.google.gson.JsonParser;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import me.melontini.forgerunner.loader.MixinHacks;
+import me.melontini.forgerunner.loader.remapping.ForgeRunnerRemapper;
 import me.melontini.forgerunner.util.Exceptions;
 import me.melontini.forgerunner.util.JarPath;
 import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.impl.gui.FabricGuiEntry;
 import net.fabricmc.tinyremapper.IMappingProvider;
-import net.fabricmc.tinyremapper.InputTag;
 import net.fabricmc.tinyremapper.TinyRemapper;
 import net.fabricmc.tinyremapper.TinyUtils;
 import net.fabricmc.tinyremapper.api.TrRemapper;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.commons.ClassRemapper;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.service.IClassBytecodeProvider;
 import org.spongepowered.asm.service.IMixinService;
@@ -71,24 +73,17 @@ public class ModAdapter {
                 .withMappings(provider).renameInvalidLocals(false).build();
 
         Map<String, byte[]> classMap = new HashMap<>();
-        Map<JarPath, Map<String, byte[]>> localClasses = new HashMap<>();
-
-        Map<InputTag, JarPath> tags = new HashMap<>();
         for (JarPath jar : jars) {
-            InputTag tag = remapper.createInputTag();
-            tags.put(tag, jar);
-            remapper.readInputsAsync(tag, jar.path());
+            jar.jarFile().stream().filter(jarEntry -> jarEntry.getRealName().endsWith(".class"))
+                    .forEach(jarEntry -> Exceptions.uncheck(() -> classMap.put(jarEntry.getRealName().replace(".class", ""), jar.jarFile().getInputStream(jarEntry).readAllBytes())));
         }
-        tags.forEach((tag, jarPath) -> remapper.apply((s, bytes) -> {
-            classMap.put(s, bytes);
-            localClasses.computeIfAbsent(tags.get(tag), jarPath1 -> new HashMap<>()).put(s, bytes);
-        }, tag));
 
         MixinHacks.bootstrap();
         IClassBytecodeProvider current = MixinService.getService().getBytecodeProvider();
         IMixinService currentService = MixinService.getService();
         MixinHacks.crackMixinBytecodeProvider(current, currentService, classMap);
 
+        ForgeRunnerRemapper frr = new ForgeRunnerRemapper(remapper.getEnvironment().getRemapper());
         Gson gson = new Gson();
         for (JarPath jar : jars) {
             log.debug("Adapting {}", jar.path().getFileName());
@@ -98,12 +93,13 @@ public class ModAdapter {
                 adapter.excludeJarJar();
                 adapter.copyManifest();
                 adapter.remapMixinConfigs(remapper.getEnvironment().getRemapper());
-                adapter.transformClasses(localClasses.get(jar));
+                adapter.transformClasses(classMap, frr);
                 adapter.adaptModMetadata(gson);
                 adapter.copyNonClasses();
             } catch (Throwable t) {
                 log.error("Failed to adapt mod " + jar.path().getFileName(), t);
                 Files.deleteIfExists(file);
+                FabricGuiEntry.displayError("Failed to adapt mod " + jar.path().getFileName(), t, true);
             } finally {
                 jar.jarFile().close();
             }
@@ -113,25 +109,18 @@ public class ModAdapter {
         MixinHacks.uncrackMixinService(currentService, classMap);
     }
 
-    private void transformClasses(Map<String, byte[]> localClasses) {
-        localClasses.forEach((s, bytes) -> Exceptions.uncheck(() -> {
+    private void transformClasses(Map<String, byte[]> localClasses, ForgeRunnerRemapper remapper) {
+        jar.jarFile().stream().filter(jarEntry -> jarEntry.getRealName().endsWith(".class")).forEach((entry) -> Exceptions.uncheck(() -> {
+            ClassReader reader = new ClassReader(localClasses.get(entry.getRealName().replace(".class", "")));
             ClassNode node = new ClassNode();
-            ClassReader reader = new ClassReader(bytes);
-            reader.accept(node, 0);
+            reader.accept(new ClassRemapper(node, remapper), 0);
 
-            boolean modified = ClassAdapter.adapt(node, this);
+            ClassAdapter.adapt(node, this);
 
-            if (modified) {
-                MixinClassWriter writer = new MixinClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-                node.accept(writer);
-                zos.putNextEntry(new ZipEntry(node.name + ".class"));
-                zos.write(writer.toByteArray());
-                zos.closeEntry();
-            } else {//No point in writing the class if it wasn't modified
-                zos.putNextEntry(new ZipEntry(node.name + ".class"));
-                zos.write(bytes);
-                zos.closeEntry();
-            }
+            MixinClassWriter writer = new MixinClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+            node.accept(writer);
+            zos.putNextEntry(new ZipEntry(node.name + ".class"));
+            zos.write(writer.toByteArray());
         }));
     }
 
