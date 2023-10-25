@@ -6,18 +6,19 @@
 
 A (questionable) attempt at loading Forge mods on Fabric!
 
-Currently can:
+Currently, can:
 
 - [x] Basic mod discovery.
 - [x] Super basic 1-mod metadata conversion.
 - [x] Basic mod injection.
+- [x] Basic JarJar support.
+- [x] Remapping mods to `intermediary`.
+- [x] Main entrypoint injection.
 
 What needs to be done:
 
 - Conflict resolution.
-- JarJar.
-- Remapping to `intermediary`
-- - AsmApi and whatnot.
+- AsmApi and whatnot.
 - Adapting classes to a non-patched version of the game.
 - - Field getters.
 - - Custom constructors.

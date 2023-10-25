@@ -32,9 +32,9 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.zip.ZipOutputStream;
 
 @Slf4j
@@ -136,23 +136,7 @@ public class ModAdapter {
                 JsonObject forgeMeta = gson.fromJson(JsonFormat.minimalInstance().createWriter().writeToString(cc), JsonObject.class);
 
                 MetadataAdapter.adapt(forgeMeta, file);
-                return;
             }
         }
-
-        String name = file.getJar().path().getFileName().toString().replace(".jar", "").replaceAll("[^a-zA-Z_-]", "-").replaceAll("-+", "-").toLowerCase(Locale.ROOT);
-
-        String id = name;
-        if (id.length() > 64) {
-            try {
-                String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-1").digest(id.getBytes()));
-                id = id.substring(0, 50) + "-" + hash.substring(0, 14);
-            } catch (NoSuchAlgorithmException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        file.getModJson().id(id);
-        file.getModJson().version("0.0.0");//How would you get this info?
-        file.getModJson().accept(object -> object.addProperty("name", name));
     }
 }

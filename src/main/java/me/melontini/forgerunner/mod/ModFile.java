@@ -1,5 +1,9 @@
 package me.melontini.forgerunner.mod;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import lombok.Getter;
 import me.melontini.forgerunner.util.Exceptions;
 import me.melontini.forgerunner.util.JarPath;
@@ -8,6 +12,7 @@ import org.spongepowered.asm.util.Constants;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.jar.JarEntry;
@@ -32,20 +37,11 @@ public class ModFile implements ByteConvertible {
         this.environment = environment;
         this.hasForgeMeta = jarPath.jarFile().getJarEntry("META-INF/mods.toml") != null;
 
-        jar.jarFile().stream().filter(jarEntry -> jarEntry.getRealName().startsWith("META-INF/jarjar"))
-                .forEach(jarEntry -> Exceptions.uncheck(() -> {
-                    if (jarEntry.getRealName().endsWith(".jar")) {
-                        File temp = File.createTempFile(jarEntry.getRealName().replace(".jar", "") + "-JarJar", ".jar");
-                        temp.deleteOnExit();
-                        byte[] bytes = Exceptions.uncheck(() -> jar.jarFile().getInputStream(jarEntry).readAllBytes());
-                        Files.write(temp.toPath(), bytes);
-
-                        ModFile file = new ModFile(new JarPath(new JarFile(temp), temp.toPath(), true), environment);
-                        environment.appendModFile(file);
-                        this.getModJson().addJar(jarEntry.getRealName());
-                        this.files.put(jarEntry.getRealName(), file);
-                    }
-                }));
+        try {
+            this.parseJarJar();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to prepare JarJar", e);
+        }
 
         this.files.put("META-INF/MANIFEST.MF", new Manifest(Exceptions.uncheck(() -> jarPath.jarFile().getManifest())));
 
@@ -77,6 +73,45 @@ public class ModFile implements ByteConvertible {
                     byte[] bytes = Exceptions.uncheck(() -> jar.jarFile().getInputStream(entry).readAllBytes());
                     this.files.put(entry.getRealName(), () -> bytes);
                 });
+    }
+
+    private void parseJarJar() throws IOException {
+        JarEntry jarJarMeta = jar.jarFile().getJarEntry("META-INF/jarjar/metadata.json");
+        if (jarJarMeta == null) return;
+
+        Reader reader = new InputStreamReader(jar.jarFile().getInputStream(jarJarMeta));
+        JsonObject object = JsonParser.parseReader(reader).getAsJsonObject();
+        if (!object.has("jars")) return;
+        JsonArray array = object.get("jars").getAsJsonArray();
+
+        for (JsonElement element : array) {
+            if (!element.isJsonObject()) continue;
+            JsonObject jarObj = element.getAsJsonObject();
+            String path = jarObj.get("path").getAsString();
+
+            File temp = File.createTempFile(path.replace(".jar", "") + "-JarJar", ".jar");
+            temp.deleteOnExit();
+            byte[] bytes = Exceptions.uncheck(() -> jar.jarFile().getInputStream(jar.jarFile().getJarEntry(path)).readAllBytes());
+            Files.write(temp.toPath(), bytes);
+
+            ModFile file = new ModFile(new JarPath(new JarFile(temp), temp.toPath(), true), environment);
+            if (!file.hasForgeMeta()) {
+                JsonObject id = jarObj.get("identifier").getAsJsonObject();
+                String modId = (id.get("group").getAsString().replace(".", "_") + "_" + id.get("artifact").getAsString().replace(".", "-")).toLowerCase();
+                String name = id.get("artifact").getAsString();
+
+                JsonObject version = jarObj.get("version").getAsJsonObject();
+                String modVersion = version.get("artifactVersion").getAsString();
+
+                file.getModJson().id(modId);
+                file.getModJson().version(modVersion);
+                file.getModJson().accept(object1 -> object1.addProperty("name", name));
+            }
+
+            environment.appendModFile(file);
+            this.getModJson().addJar(path);
+            this.files.put(path, file);
+        }
     }
 
     public boolean hasForgeMeta() {
