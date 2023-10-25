@@ -12,6 +12,9 @@
   "icon": "assets/forgerunner/icon.png",
   "environment": "*",
   "entrypoints": {
+    "forgerunner:patches": [
+      "me.melontini.forgerunner.patches.ModEntryPointPatch"
+    ]
   },
   "mixins": [
     "forgerunner.mixins.json"

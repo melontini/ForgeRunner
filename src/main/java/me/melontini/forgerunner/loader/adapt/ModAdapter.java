@@ -202,19 +202,19 @@ public class ModAdapter {
                 .forEach(jarEntry -> this.excludedEntries.add(jarEntry.getRealName()));
     }
 
-    Set<String> getMixinConfigs() {
+    public Set<String> getMixinConfigs() {
         return Collections.unmodifiableSet(mixinConfigs);
     }
 
-    void addEntrypointClass(String cls) {
+    public void addEntrypointClass(String cls) {
         this.mainEntrypoint.add(cls.replace("/", "."));
     }
 
-    Set<String> getEntrypointClasses() {
+    public Set<String> getEntrypointClasses() {
         return Collections.unmodifiableSet(this.mainEntrypoint);
     }
 
-    JarFile getJarFile() {
+    public JarFile getJarFile() {
         return jar.jarFile();
     }
 }
