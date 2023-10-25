@@ -3,7 +3,10 @@ package me.melontini.forgerunner.loader;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.fabricmc.loader.api.FabricLoader;
-import net.fabricmc.mapping.tree.*;
+import net.fabricmc.mapping.tree.ClassDef;
+import net.fabricmc.mapping.tree.Descriptored;
+import net.fabricmc.mapping.tree.TinyMappingFactory;
+import net.fabricmc.mapping.tree.TinyTree;
 
 import java.nio.file.Files;
 import java.util.Collection;
@@ -14,14 +17,13 @@ import java.util.Map;
 //TODO mapping i.o?
 public class TinyResolver {
 
-    private static TinyTree tree;
     private static NamespaceData data;
-    private static final Map<String, String> fieldOwnersCache = new HashMap<>();
-    private static final Map<String, String> methodOwnersCache = new HashMap<>();
+    private static final Map<Tuple, String> fieldOwnersCache = new HashMap<>();
+    private static final Map<Tuple, String> methodOwnersCache = new HashMap<>();
 
     @SneakyThrows
     public static void load() {
-        tree = TinyMappingFactory.loadWithDetection(Files.newBufferedReader(FabricLoader.getInstance().getModContainer("forgerunner").orElseThrow().findPath("data/forgerunner/mappings_1.20.1.tiny").orElseThrow()));
+        TinyTree tree = TinyMappingFactory.loadWithDetection(Files.newBufferedReader(FabricLoader.getInstance().getModContainer("forgerunner").orElseThrow().findPath("data/forgerunner/mappings_1.20.1.tiny").orElseThrow()));
 
         NamespaceData data = new NamespaceData();
         Map<String, String> classNameMap = new HashMap<>();
@@ -42,15 +44,13 @@ public class TinyResolver {
     }
 
     public static String getFieldOwner(String name, String desc) {
-        String owner = fieldOwnersCache.get(name + desc);
+        String owner = fieldOwnersCache.get(new Tuple(name, desc));
         if (owner == null) {
-            for (ClassDef aClass : tree.getClasses()) {
-                for (FieldDef field : aClass.getFields()) {
-                    if (field.getName("searge").equals(name) && field.getDescriptor("searge").equals(desc)) {
-                        owner = aClass.getName("searge");
-                        fieldOwnersCache.put(name + desc, owner);
-                        return owner;
-                    }
+            for (Map.Entry<EntryTriple, String> entry : data.fieldNames.entrySet()) {
+                if (entry.getKey().desc.equals(desc) && entry.getKey().name.equals(name)) {
+                    owner = entry.getKey().owner;
+                    fieldOwnersCache.put(new Tuple(name, desc), owner.replace(".", "/"));
+                    return owner;
                 }
             }
         }
@@ -58,15 +58,13 @@ public class TinyResolver {
     }
 
     public static String getMethodOwner(String name, String desc) {
-        String owner = methodOwnersCache.get(name + desc);
+        String owner = methodOwnersCache.get(new Tuple(name, desc));
         if (owner == null) {
-            for (ClassDef aClass : tree.getClasses()) {
-                for (FieldDef field : aClass.getFields()) {
-                    if (field.getName("searge").equals(name) && field.getDescriptor("searge").equals(desc)) {
-                        owner = aClass.getName("searge");
-                        methodOwnersCache.put(name + desc, owner);
-                        return owner;
-                    }
+            for (Map.Entry<EntryTriple, String> entry : data.methodNames.entrySet()) {
+                if (entry.getKey().desc.equals(desc) && entry.getKey().name.equals(name)) {
+                    owner = entry.getKey().owner;
+                    methodOwnersCache.put(new Tuple(name, desc), owner.replace(".", "/"));
+                    return owner;
                 }
             }
         }
@@ -124,5 +122,8 @@ public class TinyResolver {
     }
 
     public record EntryTriple(String owner, String name, String desc) {
+    }
+
+    public record Tuple(String name, String desc) {
     }
 }
