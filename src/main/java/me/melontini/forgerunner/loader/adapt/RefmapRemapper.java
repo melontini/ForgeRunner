@@ -60,20 +60,24 @@ public class RefmapRemapper {
     }
 
     private static String remapField(String owner, String name, String desc, TrRemapper remapper) {
-        owner = owner != null ? owner : TinyResolver.getFieldOwner(name, desc);
-        name = TinyResolver.mapFieldName(owner.substring(1, owner.length() - 1).replace("/", "."), name, desc);
+        String top = TinyResolver.getMethodOwner(name, desc);
+
+        String s = top != null ? top : owner.substring(1, owner.length() - 1);
+        name = TinyResolver.mapFieldName(s.replace("/", "."), name, desc);
         desc = remapper.mapDesc(desc);
 
-        String mappedOwner = remapper.mapDesc(owner);
+        String mappedOwner = owner != null ? remapper.mapDesc(owner) : "";
         return mappedOwner + name + ":" + desc;
     }
 
     private static String remapMethod(String owner, String name, String desc, TrRemapper remapper) {
-        owner = owner != null ? owner : TinyResolver.getMethodOwner(name, desc);
-        name = TinyResolver.mapMethodName(owner.substring(1, owner.length() - 1).replace("/", "."), name, desc);
+        String top = TinyResolver.getMethodOwner(name, desc);
+
+        String s = top != null ? top : owner.substring(1, owner.length() - 1);
+        name = TinyResolver.mapMethodName(s.replace("/", "."), name, desc);
         desc = remapper.mapMethodDesc(desc);
 
-        String mappedOwner = remapper.mapDesc(owner);
+        String mappedOwner = owner != null ? remapper.mapDesc(owner) : "";
         return mappedOwner + name + desc;
     }
 }
