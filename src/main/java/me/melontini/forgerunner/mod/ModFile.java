@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -23,14 +24,28 @@ public class ModFile implements ByteConvertible {
     @Getter
     private final Environment environment;
     private final Set<String> excludedEntries = new HashSet<>();
+    private final boolean hasForgeMeta;
 
     public ModFile(JarPath jarPath, Environment environment) {
         this.jar = jarPath;
         this.files.put("fabric.mod.json", new ModJson());
         this.environment = environment;
+        this.hasForgeMeta = jarPath.jarFile().getJarEntry("META-INF/mods.toml") != null;
 
         jar.jarFile().stream().filter(jarEntry -> jarEntry.getRealName().startsWith("META-INF/jarjar"))
-                .forEach(jarEntry -> this.excludedEntries.add(jarEntry.getRealName()));
+                .forEach(jarEntry -> Exceptions.uncheck(() -> {
+                    if (jarEntry.getRealName().endsWith(".jar")) {
+                        File temp = File.createTempFile(jarEntry.getRealName().replace(".jar", "") + "-JarJar", ".jar");
+                        temp.deleteOnExit();
+                        byte[] bytes = Exceptions.uncheck(() -> jar.jarFile().getInputStream(jarEntry).readAllBytes());
+                        Files.write(temp.toPath(), bytes);
+
+                        ModFile file = new ModFile(new JarPath(new JarFile(temp), temp.toPath(), true), environment);
+                        environment.appendModFile(file);
+                        this.getModJson().addJar(jarEntry.getRealName());
+                        this.files.put(jarEntry.getRealName(), file);
+                    }
+                }));
 
         this.files.put("META-INF/MANIFEST.MF", new Manifest(Exceptions.uncheck(() -> jarPath.jarFile().getManifest())));
 
@@ -62,6 +77,10 @@ public class ModFile implements ByteConvertible {
                     byte[] bytes = Exceptions.uncheck(() -> jar.jarFile().getInputStream(entry).readAllBytes());
                     this.files.put(entry.getRealName(), () -> bytes);
                 });
+    }
+
+    public boolean hasForgeMeta() {
+        return this.hasForgeMeta;
     }
 
     public ModJson getModJson() {

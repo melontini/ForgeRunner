@@ -55,7 +55,7 @@ public class ModLocator {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                 if (!guaranteedFabric.contains(file) && IS_VALID_FILE.apply(file))
-                    candidates.add(new JarPath(new JarFile(file.toFile()), file));
+                    candidates.add(new JarPath(new JarFile(file.toFile()), file, false));
                 return FileVisitResult.CONTINUE;
             }
         });

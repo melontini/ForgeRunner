@@ -52,6 +52,16 @@ public class ModJson implements ByteConvertible {
         return List.of();
     }
 
+    public void addJar(String jar) {
+        JsonArray array = backing.has("jars") ? backing.get("jars").getAsJsonArray() : new JsonArray();
+
+        JsonObject file = new JsonObject();
+        file.addProperty("file", jar);
+        array.add(file);
+
+        backing.add("jars", array);
+    }
+
     @Override
     public byte[] toBytes() {
         return backing.toString().getBytes();

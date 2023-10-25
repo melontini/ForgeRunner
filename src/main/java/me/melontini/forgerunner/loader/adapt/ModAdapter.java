@@ -32,9 +32,9 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
 import java.util.zip.ZipOutputStream;
 
 @Slf4j
@@ -72,18 +72,20 @@ public class ModAdapter {
         Gson gson = new Gson();
         for (ModFile modFile : modFiles) {
             log.debug("Adapting {}", modFile.getJar().path().getFileName());
-            Path file = REMAPPED_MODS.resolve(modFile.getJar().path().getFileName());
+            Path file = modFile.getJar().temp() ? null : REMAPPED_MODS.resolve(modFile.getJar().path().getFileName());
 
             try {
                 remapMixinConfigs(modFile);
                 adaptModMetadata(gson, modFile);
                 transformClasses(modFile, frr);
-                try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(file))) {
-                    modFile.writeToJar(zos);
+                if (file != null) {
+                    try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(file))) {
+                        modFile.writeToJar(zos);
+                    }
                 }
             } catch (Throwable t) {
                 log.error("Failed to adapt mod " + modFile.getJar().path().getFileName(), t);
-                Files.deleteIfExists(file);
+                if (file != null) Files.deleteIfExists(file);
                 FabricGuiEntry.displayError("Failed to adapt mod " + modFile.getJar().path().getFileName(), t, true);
             } finally {
                 modFile.getJar().jarFile().close();
@@ -113,6 +115,7 @@ public class ModAdapter {
     private static void remapMixinConfigs(ModFile file) {
         for (String mixinConfig : file.getMixinConfigs()) {
             MixinConfig config = (MixinConfig) file.getFile(mixinConfig);
+            if (config == null) continue;
 
             String refmapFile = config.getRefMap();
             ByteConvertible refmap = file.getFile(refmapFile);
@@ -126,11 +129,30 @@ public class ModAdapter {
     }
 
     private static void adaptModMetadata(Gson gson, ModFile file) {
-        ByteConvertible forge = file.getFile("META-INF/mods.toml");
+        if (file.hasForgeMeta()) {
+            ByteConvertible forge = file.getFile("META-INF/mods.toml");
+            if (forge != null) {
+                CommentedConfig cc = TomlFormat.instance().createParser().parse(new InputStreamReader(new ByteArrayInputStream(forge.toBytes())));
+                JsonObject forgeMeta = gson.fromJson(JsonFormat.minimalInstance().createWriter().writeToString(cc), JsonObject.class);
 
-        CommentedConfig cc = TomlFormat.instance().createParser().parse(new InputStreamReader(new ByteArrayInputStream(forge.toBytes())));
-        JsonObject forgeMeta = gson.fromJson(JsonFormat.minimalInstance().createWriter().writeToString(cc), JsonObject.class);
+                MetadataAdapter.adapt(forgeMeta, file);
+                return;
+            }
+        }
 
-        MetadataAdapter.adapt(forgeMeta, file);
+        String name = file.getJar().path().getFileName().toString().replace(".jar", "").replaceAll("[^a-zA-Z_-]", "-").replaceAll("-+", "-").toLowerCase(Locale.ROOT);
+
+        String id = name;
+        if (id.length() > 64) {
+            try {
+                String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-1").digest(id.getBytes()));
+                id = id.substring(0, 50) + "-" + hash.substring(0, 14);
+            } catch (NoSuchAlgorithmException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        file.getModJson().id(id);
+        file.getModJson().version("0.0.0");//How would you get this info?
+        file.getModJson().accept(object -> object.addProperty("name", name));
     }
 }

@@ -14,6 +14,10 @@ import java.util.Map;
 public class RefmapRemapper {
 
     public static void remap(JsonObject object, ForgeRunnerRemapper remapper) {
+        if (!object.has("data")) return;
+        JsonObject data = object.get("data").getAsJsonObject();
+        if (!data.has("searge")) return;
+
         JsonObject mappings = object.get("mappings").getAsJsonObject();
         for (Map.Entry<String, JsonElement> entry : mappings.entrySet()) {
             if (entry.getValue() instanceof JsonObject jo) {
@@ -27,7 +31,6 @@ public class RefmapRemapper {
             }
         }
 
-        JsonObject data = object.get("data").getAsJsonObject();
         JsonObject searge = data.get("searge").getAsJsonObject();
         for (Map.Entry<String, JsonElement> entry : searge.entrySet()) {
             if (entry.getValue() instanceof JsonObject jo) {
