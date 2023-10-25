@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import lombok.SneakyThrows;
-import org.spongepowered.asm.util.Constants;
 
 import java.util.Map;
 
@@ -51,17 +50,10 @@ public class MetadataAdapter {
 
     @SneakyThrows
     private static void adaptMixins(ModAdapter adapter, JsonObject fabric) {
-        String attr = adapter.getJarFile().getManifest().getMainAttributes().getValue(Constants.ManifestAttributes.MIXINCONFIGS);
-        if (attr != null) {
-            String[] config = attr.split(",");
-            JsonArray mixins = new JsonArray();
-            for (String mixin : config) {
-                if (adapter.getJarFile().getJarEntry(mixin) == null)
-                    continue; //To work around some mods including configs from others.
-                mixins.add(mixin);
-                adapter.addMixinConfig(mixin);
-            }
-            fabric.add("mixins", mixins);
+        if (!adapter.getMixinConfigs().isEmpty()) {
+            JsonArray array = new JsonArray();
+            adapter.getMixinConfigs().forEach(array::add);
+            fabric.add("mixins", array);
         }
     }
 }

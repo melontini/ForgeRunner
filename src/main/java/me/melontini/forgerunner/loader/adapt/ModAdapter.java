@@ -24,6 +24,7 @@ import org.spongepowered.asm.service.IClassBytecodeProvider;
 import org.spongepowered.asm.service.IMixinService;
 import org.spongepowered.asm.service.MixinService;
 import org.spongepowered.asm.transformers.MixinClassWriter;
+import org.spongepowered.asm.util.Constants;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -96,9 +97,9 @@ public class ModAdapter {
                 ModAdapter adapter = new ModAdapter(jar, zos); //TODO: Adapt ATs
                 adapter.excludeJarJar();
                 adapter.copyManifest();
+                adapter.remapMixinConfigs(remapper.getEnvironment().getRemapper());
                 adapter.transformClasses(localClasses.get(jar));
                 adapter.adaptModMetadata(gson);
-                adapter.remapMixinConfigs(remapper.getEnvironment().getRemapper());
                 adapter.copyNonClasses();
             } catch (Throwable t) {
                 log.error("Failed to adapt mod " + jar.path().getFileName(), t);
@@ -145,6 +146,16 @@ public class ModAdapter {
 
     @SneakyThrows
     private void remapMixinConfigs(TrRemapper remapper) {
+        String attr = this.getJarFile().getManifest().getMainAttributes().getValue(Constants.ManifestAttributes.MIXINCONFIGS);
+        if (attr != null) {
+            String[] config = attr.split(",");
+            for (String mixin : config) {
+                if (this.getJarFile().getJarEntry(mixin) == null)
+                    continue; //To work around some mods including configs from others.
+                this.mixinConfigs.add(mixin);
+            }
+        }
+
         for (String mixinConfig : mixinConfigs) {
             JarEntry entry = jar.jarFile().getJarEntry(mixinConfig);
             if (entry == null) continue;
@@ -202,8 +213,8 @@ public class ModAdapter {
                 .forEach(jarEntry -> this.excludedEntries.add(jarEntry.getRealName()));
     }
 
-    void addMixinConfig(String mixinConfig) {
-        this.mixinConfigs.add(mixinConfig);
+    Set<String> getMixinConfigs() {
+        return Collections.unmodifiableSet(mixinConfigs);
     }
 
     void addEntrypointClass(String cls) {
