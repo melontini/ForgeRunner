@@ -27,6 +27,9 @@ import java.util.Map;
 public class ModInjector {
 
     private static final List<ModContainerImpl> FORGE_MODS = new ArrayList<>();
+    private static final Map<String, List<String>> ALIASES = Map.of(
+            "com_github_llamalad7_mixinextras", List.of("mixinextras")
+    );//TODO: use a service
     private static final String CACHE_DIR_NAME = ".fabric";
     private static final String PROCESSED_MODS = "processedForgeMods";
 
@@ -37,11 +40,17 @@ public class ModInjector {
             modMap.putIfAbsent(mod.getMetadata().getId().replace("-", "_"), mod);
             //Some mods use hyphens in their ID on Fabric and underscores on Forge, so we link hyphens with underscores.
         }
+        ALIASES.forEach((s, strings) -> {
+            ModContainerImpl impl = modMap.get(s);
+            if (impl != null) strings.forEach(alias -> modMap.put(alias, impl));
+        });
 
         ModDiscoverer discoverer = new ModDiscoverer(new VersionOverrides(), new DependencyOverrides(Loader.getInstance().getGameDir()));
         discoverer.addCandidateFinder(new DirectoryModCandidateFinder(Loader.REMAPPED_MODS, Loader.getInstance().isDevelopmentEnvironment()));
         List<ModCandidate> candidates = discoverer.discoverMods(Loader.getInstance(), Map.of());
         candidates.removeIf(candidate -> candidate.isBuiltin() || Loader.getInstance().isModLoaded(candidate.getId()));
+        candidates.forEach(modCandidate -> modCandidate.getNestedMods().removeIf(candidate -> candidate.isBuiltin() || Loader.getInstance().isModLoaded(candidate.getId())));
+
         if (candidates.isEmpty()) {
             log.info("No Forge mod candidates will be loaded");
             return;
