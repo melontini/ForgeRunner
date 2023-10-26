@@ -15,7 +15,7 @@ import net.fabricmc.loader.impl.launch.knot.Knot;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.util.List;
+import java.util.Set;
 
 @Slf4j
 public class EarlyBootstrap implements LanguageAdapter {
@@ -40,7 +40,7 @@ public class EarlyBootstrap implements LanguageAdapter {
             FabricGuiEntry.displayError("Failed to download mappings", e, true);
         }
         SrgRemapper.load();
-        List<JarPath> forgeMods = ModLocator.start();
+        Set<JarPath> forgeMods = ModLocator.start();
         ModAdapter.start(forgeMods);
         ModInjector.inject();
     }

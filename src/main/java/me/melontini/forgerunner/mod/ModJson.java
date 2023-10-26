@@ -24,24 +24,31 @@ public class ModJson implements ByteConvertible {
     public void id(String modId) {
         backing.addProperty("id", modId);
     }
+    public String id() {
+        return backing.get("id").getAsString();
+    }
+
     public void version(String version) {
         backing.addProperty("version", version);
     }
+    public String version() {
+        return backing.get("version").getAsString();
+    }
 
-    public void addEntrypoint(String entrypoint, String notation) {
+    public void entrypoint(String entrypoint, String notation) {
         JsonObject entrypoints = backing.get("entrypoints").getAsJsonObject();
         JsonArray ep = entrypoints.has(entrypoint) ? entrypoints.get(entrypoint).getAsJsonArray() : new JsonArray();
         ep.add(notation);
         entrypoints.add(entrypoint, ep);
     }
 
-    public void addMixins(String config) {
+    public void mixinConfig(String config) {
         JsonArray array = backing.has("mixins") ? backing.get("mixins").getAsJsonArray() : new JsonArray();
         array.add(config);
         backing.add("mixins", array);
     }
 
-    public List<String> getMixins() {
+    public List<String> mixinConfigs() {
         if (backing.has("mixins")) {
             List<String> mixins = new ArrayList<>();
             for (JsonElement element : backing.get("mixins").getAsJsonArray()) {
@@ -52,7 +59,7 @@ public class ModJson implements ByteConvertible {
         return List.of();
     }
 
-    public void addJar(String jar) {
+    public void jar(String jar) {
         JsonArray array = backing.has("jars") ? backing.get("jars").getAsJsonArray() : new JsonArray();
 
         JsonObject file = new JsonObject();

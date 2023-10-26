@@ -20,7 +20,7 @@ public class ModEntryPointPatch implements Patch {
     public void patch(ClassNode node, ModFile modFile) {
         if (node.visibleAnnotations != null) {
             if (node.visibleAnnotations.stream().anyMatch(annotation -> annotation.desc.equals("Lnet/minecraftforge/fml/common/Mod;"))) {
-                modFile.getModJson().addEntrypoint("main", node.name.replace("/", "."));
+                modFile.modJson().entrypoint("main", node.name.replace("/", "."));
 
                 if (node.interfaces == null) node.interfaces = new ArrayList<>();
                 node.interfaces.add(MOD_INITIALIZER.getInternalName());

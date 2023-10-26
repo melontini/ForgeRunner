@@ -4,10 +4,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import me.melontini.forgerunner.util.Loader;
 import net.fabricmc.loader.impl.ModContainerImpl;
-import net.fabricmc.loader.impl.discovery.DirectoryModCandidateFinder;
-import net.fabricmc.loader.impl.discovery.ModCandidate;
-import net.fabricmc.loader.impl.discovery.ModDiscoverer;
-import net.fabricmc.loader.impl.discovery.RuntimeModRemapper;
+import net.fabricmc.loader.impl.discovery.*;
 import net.fabricmc.loader.impl.launch.FabricLauncherBase;
 import net.fabricmc.loader.impl.metadata.DependencyOverrides;
 import net.fabricmc.loader.impl.metadata.VersionOverrides;
@@ -17,10 +14,7 @@ import net.fabricmc.loader.impl.util.log.LogCategory;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 //Close your eyes
 @Slf4j
@@ -45,11 +39,15 @@ public class ModInjector {
             if (impl != null) strings.forEach(alias -> modMap.put(alias, impl));
         });
 
+        Map<String, Set<ModCandidate>> envDisabledMods = new HashMap<>();
         ModDiscoverer discoverer = new ModDiscoverer(new VersionOverrides(), new DependencyOverrides(Loader.getInstance().getGameDir()));
         discoverer.addCandidateFinder(new DirectoryModCandidateFinder(Loader.REMAPPED_MODS, Loader.getInstance().isDevelopmentEnvironment()));
-        List<ModCandidate> candidates = discoverer.discoverMods(Loader.getInstance(), Map.of());
+        List<ModCandidate> candidates = discoverer.discoverMods(Loader.getInstance(), envDisabledMods);
+
         candidates.removeIf(candidate -> candidate.isBuiltin() || Loader.getInstance().isModLoaded(candidate.getId()));
         candidates.forEach(modCandidate -> modCandidate.getNestedMods().removeIf(candidate -> candidate.isBuiltin() || Loader.getInstance().isModLoaded(candidate.getId())));
+
+        candidates = ModResolver.resolve(candidates, Loader.getInstance().getEnvironmentType(), envDisabledMods);
 
         if (candidates.isEmpty()) {
             log.info("No Forge mod candidates will be loaded");

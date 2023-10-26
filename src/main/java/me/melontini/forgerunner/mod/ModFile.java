@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import lombok.Getter;
+import lombok.experimental.Accessors;
 import me.melontini.forgerunner.util.Exceptions;
 import me.melontini.forgerunner.util.JarPath;
 import org.spongepowered.asm.util.Constants;
@@ -20,6 +21,7 @@ import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+@Accessors(fluent = true)
 public class ModFile implements ByteConvertible {
 
     private final Map<String, ByteConvertible> files = new HashMap<>();
@@ -36,6 +38,7 @@ public class ModFile implements ByteConvertible {
         this.files.put("fabric.mod.json", new ModJson());
         this.environment = environment;
         this.hasForgeMeta = jarPath.jarFile().getJarEntry("META-INF/mods.toml") != null;
+        this.excludedEntries.add("META-INF/mods.toml");
 
         try {
             this.parseJarJar();
@@ -56,14 +59,14 @@ public class ModFile implements ByteConvertible {
                     this.classes.put(name, cls);
                 }));
 
-        String attr = getManifest().manifest().getMainAttributes().getValue(Constants.ManifestAttributes.MIXINCONFIGS);
+        String attr = manifest().manifest().getMainAttributes().getValue(Constants.ManifestAttributes.MIXINCONFIGS);
         if (attr != null) {
             String[] configs = attr.split(",");
             for (String mixin : configs) {
                 JarEntry entry = jar.jarFile().getJarEntry(mixin);
                 if (entry == null) continue; //To work around some mods including configs from others.
                 this.files.put(mixin, new MixinConfig(Exceptions.uncheck(() -> new InputStreamReader(jar.jarFile().getInputStream(entry)))));
-                this.getModJson().addMixins(mixin);
+                this.modJson().mixinConfig(mixin);
             }
         }
 
@@ -103,13 +106,13 @@ public class ModFile implements ByteConvertible {
                 JsonObject version = jarObj.get("version").getAsJsonObject();
                 String modVersion = version.get("artifactVersion").getAsString();
 
-                file.getModJson().id(modId);
-                file.getModJson().version(modVersion);
-                file.getModJson().accept(object1 -> object1.addProperty("name", name));
+                file.modJson().id(modId);
+                file.modJson().version(modVersion);
+                file.modJson().accept(object1 -> object1.addProperty("name", name));
             }
 
-            environment.appendModFile(file);
-            this.getModJson().addJar(path);
+            this.environment().appendModFile(file);
+            this.modJson().jar(path);
             this.files.put(path, file);
         }
     }
@@ -118,19 +121,25 @@ public class ModFile implements ByteConvertible {
         return this.hasForgeMeta;
     }
 
-    public ModJson getModJson() {
+    public ModJson modJson() {
         return (ModJson) this.files.get("fabric.mod.json");
     }
+    public String id() {
+        return modJson().id();
+    }
+    public String version() {
+        return modJson().version();
+    }
 
-    public Manifest getManifest() {
+    public Manifest manifest() {
         return (Manifest) this.files.get("META-INF/MANIFEST.MF");
     }
 
-    public List<String> getMixinConfigs() {
-        return getModJson().getMixins();
+    public List<String> mixinConfigs() {
+        return modJson().mixinConfigs();
     }
 
-    public Collection<ModClass> getClasses() {
+    public Collection<ModClass> classes() {
         return Collections.unmodifiableCollection(this.classes.values());
     }
 

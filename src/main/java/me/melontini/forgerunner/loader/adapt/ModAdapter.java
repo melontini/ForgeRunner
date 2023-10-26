@@ -31,17 +31,23 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.zip.ZipOutputStream;
 
 @Slf4j
 public class ModAdapter {
 
+    private static final ExecutorService SERVICE = Executors.newFixedThreadPool(Math.min(Math.max(Runtime.getRuntime().availableProcessors(), 2), 8));
+
     @SneakyThrows
-    public static void start(List<JarPath> jars) {
-        jars = jars.stream().filter(jar -> !Files.exists(Loader.REMAPPED_MODS.resolve(jar.path().getFileName()))).toList();
+    public static void start(Set<JarPath> jars) {
+        jars.removeIf(jar -> Files.exists(Loader.REMAPPED_MODS.resolve(jar.path().getFileName())));
         if (jars.isEmpty()) return;
 
         IMappingProvider provider = TinyUtils.createTinyMappingProvider(Files.newBufferedReader(Loader.HIDDEN_FOLDER.resolve("mappings.tiny")), "searge", "intermediary");
@@ -50,12 +56,11 @@ public class ModAdapter {
 
         ForgeRunnerRemapper frr = new ForgeRunnerRemapper(remapper.getEnvironment().getRemapper());
 
-        List<ModFile> modFiles = new ArrayList<>();
-        Environment environment = new Environment(new HashMap<>(), modFiles, frr);
+        Environment env = new Environment(new HashMap<>(), new LinkedHashSet<>(), frr);
         log.info("Preparing modfiles...");
         try {
-            for (JarPath jar : new ArrayList<>(jars)) {
-                modFiles.add(new ModFile(jar, environment));
+            for (JarPath jar : new LinkedHashSet<>(jars)) {
+                env.appendModFile((new ModFile(jar, env)));
             }
         } catch (Throwable t) {
             log.error("Failed to prepare modfiles", t);
@@ -65,38 +70,52 @@ public class ModAdapter {
         MixinHacks.bootstrap();
         IClassBytecodeProvider current = MixinService.getService().getBytecodeProvider();
         IMixinService currentService = MixinService.getService();
-        MixinHacks.crackMixinBytecodeProvider(current, currentService, environment);
+        MixinHacks.crackMixinBytecodeProvider(current, currentService, env);
 
         Gson gson = new Gson();
-        for (ModFile modFile : modFiles) {
-            log.debug("Adapting {}", modFile.getJar().path().getFileName());
-            Path file = modFile.getJar().temp() ? null : Loader.REMAPPED_MODS.resolve(modFile.getJar().path().getFileName());
+        log.info("Adapting modfiles...");
+        for (ModFile mod : env.modFiles()) {
+            log.debug("Adapting {}", mod.jar().path().getFileName());
 
             try {
-                remapMixinConfigs(modFile);
-                adaptModMetadata(gson, modFile);
-                transformClasses(modFile, frr);
+                remapMixinConfigs(mod);
+                adaptModMetadata(gson, mod);
+                transformClasses(mod, frr);
+            } catch (Throwable t) {
+                log.error("Failed to adapt mod " + mod.id(), t);
+                FabricGuiEntry.displayError("Failed to adapt mod " + mod.id(), t, true);
+            }
+        }
+
+        log.info("Writing modfiles...");
+        for (ModFile mod : env.modFiles()) {
+            Path file = mod.jar().temp() ? null : Loader.REMAPPED_MODS.resolve(mod.jar().path().getFileName());
+
+            try {
                 if (file != null) {
                     try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(file))) {
-                        modFile.writeToJar(zos);
+                        mod.writeToJar(zos);
                     }
                 }
             } catch (Throwable t) {
-                log.error("Failed to adapt mod " + modFile.getJar().path().getFileName(), t);
-                if (file != null) Files.deleteIfExists(file);
-                FabricGuiEntry.displayError("Failed to adapt mod " + modFile.getJar().path().getFileName(), t, true);
+                Files.deleteIfExists(file);
+                log.error("Failed to write mod " + mod.jar().path().getFileName(), t);
+                FabricGuiEntry.displayError("Failed to write mod " + mod.jar().path().getFileName(), t, true);
             } finally {
-                modFile.getJar().jarFile().close();
+                mod.jar().jarFile().close();
             }
         }
-        remapper.finish();
+        log.info("Done!");
 
-        MixinHacks.uncrackMixinService(currentService, environment);
+        remapper.finish();
+        SERVICE.shutdown();
+        MixinHacks.uncrackMixinService(currentService, env);
     }
 
     private static void transformClasses(ModFile modFile, ForgeRunnerRemapper frr) {
-        for (ModClass aClass : modFile.getClasses()) {
-            aClass.accept((s, bytes) -> {
+        Set<CompletableFuture<?>> futures = new HashSet<>();
+        for (ModClass aClass : modFile.classes()) {
+            futures.add(CompletableFuture.runAsync(() -> aClass.accept((s, bytes) -> {
                 ClassReader reader = new ClassReader(bytes);
                 ClassNode node = new ClassNode();
                 reader.accept(new ClassRemapper(node, frr), 0);
@@ -106,12 +125,13 @@ public class ModAdapter {
                 MixinClassWriter writer = new MixinClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
                 node.accept(writer);
                 return writer.toByteArray();
-            });
+            }), SERVICE));
         }
+        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
     }
 
     private static void remapMixinConfigs(ModFile file) {
-        for (String mixinConfig : file.getMixinConfigs()) {
+        for (String mixinConfig : file.mixinConfigs()) {
             MixinConfig config = (MixinConfig) file.getFile(mixinConfig);
             if (config == null) continue;
 
@@ -122,7 +142,7 @@ public class ModAdapter {
 
             Reader bais = new InputStreamReader(new ByteArrayInputStream(refmap.toBytes()));
             JsonObject refmapObject = JsonParser.parseReader(bais).getAsJsonObject();
-            RefmapRemapper.remap(refmapObject, file.getEnvironment().frr());
+            RefmapRemapper.remap(refmapObject, file.environment().frr());
             file.putFile(refmapFile, () -> refmapObject.toString().getBytes());
         }
     }
@@ -130,12 +150,12 @@ public class ModAdapter {
     private static void adaptModMetadata(Gson gson, ModFile file) {
         if (file.hasForgeMeta()) {
             ByteConvertible forge = file.getFile("META-INF/mods.toml");
-            if (forge != null) {
-                CommentedConfig cc = TomlFormat.instance().createParser().parse(new InputStreamReader(new ByteArrayInputStream(forge.toBytes())));
-                JsonObject forgeMeta = gson.fromJson(JsonFormat.minimalInstance().createWriter().writeToString(cc), JsonObject.class);
+            if (forge == null) return;
 
-                MetadataAdapter.adapt(forgeMeta, file);
-            }
+            CommentedConfig cc = TomlFormat.instance().createParser().parse(new InputStreamReader(new ByteArrayInputStream(forge.toBytes())));
+            JsonObject forgeMeta = gson.fromJson(JsonFormat.minimalInstance().createWriter().writeToString(cc), JsonObject.class);
+
+            MetadataAdapter.adapt(forgeMeta, file);
         }
     }
 }

@@ -19,9 +19,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.jar.JarFile;
@@ -35,9 +34,10 @@ public class ModLocator {
         MethodHandle mh = pl.findStatic(DirectoryModCandidateFinder.class, "isValidFile", MethodType.methodType(boolean.class, Path.class));
         return path -> (Boolean) Exceptions.uncheck(() -> mh.invoke(path));
     });
+    private static final long CACHE_VERSION = 2;
 
     @SneakyThrows
-    public static List<JarPath> start() {
+    public static Set<JarPath> start() {
         Path mods = FabricLoader.getInstance().getGameDir().resolve("mods");
         log.info("Scanning {} for Forge mods", mods);
 
@@ -49,7 +49,7 @@ public class ModLocator {
         }
         log.info("Found {} guaranteed Fabric mod" + (guaranteedFabric.size() == 1 ? "" : "s"), guaranteedFabric.size());
 
-        List<JarPath> candidates = new ArrayList<>();
+        Set<JarPath> candidates = new LinkedHashSet<>();
         Files.walkFileTree(mods, new SimpleFileVisitor<>() {
             @SneakyThrows
             @Override
@@ -62,15 +62,20 @@ public class ModLocator {
         candidates.removeIf(path -> path.jarFile().getEntry("META-INF/mods.toml") == null);
         log.info("Found {} Forge mod candidate" + (candidates.size() == 1 ? "" : "s"), candidates.size());
 
+        Path p = Loader.HIDDEN_FOLDER.resolve("cache_version");
+        boolean resetCache = !Files.exists(p) || Long.parseLong(Files.readString(p).trim()) != CACHE_VERSION;
+
         Files.walkFileTree(Loader.REMAPPED_MODS, new SimpleFileVisitor<>() {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                if (!Files.exists(mods.resolve(file.getFileName()))) {
+                if (resetCache || !Files.exists(mods.resolve(file.getFileName()))) {
                     Files.deleteIfExists(file);
                 }
                 return FileVisitResult.CONTINUE;
             }
         });
+        if (resetCache) Files.writeString(p, String.valueOf(CACHE_VERSION));
+
         return candidates;
     }
 }

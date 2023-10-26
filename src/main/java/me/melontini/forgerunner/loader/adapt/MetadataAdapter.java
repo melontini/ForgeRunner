@@ -28,7 +28,7 @@ public class MetadataAdapter {
         }
         JsonObject modInfo = modInfoArray.get(0).getAsJsonObject();
 
-        ModJson fabric = file.getModJson();
+        ModJson fabric = file.modJson();
         fabric.accept(object -> MOD_INFO.forEach((key, value) -> {
             if (modInfo.has(key)) object.add(value, modInfo.get(key));
         }));
