@@ -14,9 +14,6 @@ import me.melontini.forgerunner.mod.*;
 import me.melontini.forgerunner.util.JarPath;
 import me.melontini.forgerunner.util.Loader;
 import net.fabricmc.loader.impl.gui.FabricGuiEntry;
-import net.fabricmc.tinyremapper.IMappingProvider;
-import net.fabricmc.tinyremapper.TinyRemapper;
-import net.fabricmc.tinyremapper.TinyUtils;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.commons.ClassRemapper;
@@ -50,11 +47,7 @@ public class ModAdapter {
         jars.removeIf(jar -> Files.exists(Loader.REMAPPED_MODS.resolve(jar.path().getFileName())));
         if (jars.isEmpty()) return;
 
-        IMappingProvider provider = TinyUtils.createTinyMappingProvider(Files.newBufferedReader(Loader.HIDDEN_FOLDER.resolve("mappings.tiny")), "searge", "intermediary");
-        TinyRemapper remapper = TinyRemapper.newRemapper()
-                .withMappings(provider).renameInvalidLocals(false).build();
-
-        ForgeRunnerRemapper frr = new ForgeRunnerRemapper(remapper.getEnvironment().getRemapper());
+        ForgeRunnerRemapper frr = new ForgeRunnerRemapper();
 
         Environment env = new Environment(new HashMap<>(), new LinkedHashSet<>(), frr);
         log.info("Preparing modfiles...");
@@ -107,7 +100,6 @@ public class ModAdapter {
         }
         log.info("Done!");
 
-        remapper.finish();
         SERVICE.shutdown();
         MixinHacks.uncrackMixinService(currentService, env);
     }

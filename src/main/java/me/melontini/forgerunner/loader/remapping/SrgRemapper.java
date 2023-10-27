@@ -3,10 +3,8 @@ package me.melontini.forgerunner.loader.remapping;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import me.melontini.forgerunner.util.Loader;
-import net.fabricmc.mapping.tree.ClassDef;
-import net.fabricmc.mapping.tree.Descriptored;
-import net.fabricmc.mapping.tree.TinyMappingFactory;
-import net.fabricmc.mapping.tree.TinyTree;
+import net.minecraftforge.srgutils.IMappingFile;
+import org.objectweb.asm.Type;
 
 import java.nio.file.Files;
 import java.util.Collection;
@@ -14,48 +12,51 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
-//TODO mapping i.o?
 public class SrgRemapper {
 
     private static NamespaceData data;
-    private static final Map<Tuple, String> fieldOwnersCache = new HashMap<>();
-    private static final Map<Tuple, String> methodOwnersCache = new HashMap<>();
+    private static IMappingFile MAPPING_FILE;
 
     @SneakyThrows
     public static void load() {
-        TinyTree tree = TinyMappingFactory.loadWithDetection(Files.newBufferedReader(Loader.HIDDEN_FOLDER.resolve("mappings.tiny")));
+        IMappingFile mappingFile = IMappingFile.load(Files.newInputStream(Loader.HIDDEN_FOLDER.resolve("mappings.tiny")));
 
         NamespaceData data = new NamespaceData();
-        Map<String, String> classNameMap = new HashMap<>();
 
-        for (ClassDef classEntry : tree.getClasses()) {
-            String fromClass = mapClassName(classNameMap, classEntry.getName("searge"));
-            String toClass = mapClassName(classNameMap, classEntry.getName("intermediary"));
+        for (IMappingFile.IPackage aPackage : mappingFile.getPackages()) {
+            String original = aPackage.getOriginal();
+            if (original.startsWith("net/minecraft") || original.startsWith("com/mojang")) {
+                data.packages.put(original, aPackage.getMapped());
+            }
+        }
 
-            data.classNames.put(fromClass, toClass);
-            data.classNamesInverse.put(toClass, fromClass);
+        for (IMappingFile.IClass cls : mappingFile.getClasses()) {
+            String original = cls.getOriginal();
+            String mapped = cls.getMapped();
 
-            String mappedClassName = mapClassName(classNameMap, fromClass);
+            if (original.startsWith("net/minecraft") || original.startsWith("com/mojang")) {
+                data.classNames.put(original, mapped);
+                data.classNamesInverse.put(mapped, original);
+            }
 
-            recordMember(classEntry.getFields(), data.fieldNames, mappedClassName);
-            recordMember(classEntry.getMethods(), data.methodNames, mappedClassName);
+            recordFields(cls.getFields(), data, original);
+            recordMethods(cls.getMethods(), data, original);
         }
         SrgRemapper.data = data;
 
-        for (Map.Entry<EntryTriple, String> entry : data.fieldNames.entrySet()) {
-            fieldOwnersCache.put(new Tuple(entry.getKey().name, entry.getKey().desc), entry.getKey().owner.replace(".", "/"));
-        }
-        for (Map.Entry<EntryTriple, String> entry : data.methodNames.entrySet()) {
-            methodOwnersCache.put(new Tuple(entry.getKey().name, entry.getKey().desc), entry.getKey().owner.replace(".", "/"));
-        }
+        MAPPING_FILE = mappingFile;
+    }
+
+    public static IMappingFile getMappingFile() {
+        return MAPPING_FILE;
     }
 
     public static String getFieldOwner(String name, String desc) {
-        return fieldOwnersCache.get(new Tuple(name, desc));
+        return data.ownerlessFields.get(new Tuple(name, desc));
     }
 
     public static String getMethodOwner(String name, String desc) {
-        return methodOwnersCache.get(new Tuple(name, desc));
+        return data.ownerlessMethods.get(new Tuple(name, desc));
     }
 
     public static String mapClassName(String className) {
@@ -66,33 +67,65 @@ public class SrgRemapper {
         return data.classNamesInverse.getOrDefault(className, className);
     }
 
+    public static String mapPackageName(String packageName) {
+        return data.packages.getOrDefault(packageName, packageName);
+    }
+
     public static String mapFieldName(String owner, String name, String descriptor) {
-        return data.fieldNames.getOrDefault(new EntryTriple(owner, name, descriptor), name);
+        String mapped = data.fieldNames.get(new Triple(owner, name, descriptor));
+        if (mapped != null) return mapped;
+        return data.ownerlessFields.getOrDefault(new Tuple(name, descriptor), name);
     }
 
     public static String mapMethodName(String owner, String name, String descriptor) {
-        return data.methodNames.getOrDefault(new EntryTriple(owner, name, descriptor), name);
+        String mapped = data.methodNames.get(new Triple(owner, name, descriptor));
+        if (mapped != null) return mapped;
+        return data.ownerlessMethods.getOrDefault(new Tuple(name, descriptor), name);
     }
 
-    private static String mapClassName(Map<String, String> classNameMap, String s) {
-        return classNameMap.computeIfAbsent(s, s1 -> s1);
+    public static String mapAnnotationAttributeName(String annotationDesc, String name, String attributeDesc) {
+        String annotationClass = Type.getType(annotationDesc).getInternalName();
+        if (attributeDesc == null) {
+            return data.methodsNoReturn.getOrDefault(new Triple(annotationClass, name, "()"), name);
+        }
+        return data.methodNames.getOrDefault(new Triple(annotationClass, name, "()" + attributeDesc), name);
     }
 
-    private static  <T extends Descriptored> void recordMember(Collection<T> descriptoredList, Map<EntryTriple, String> putInto, String fromClass) {
-        for (T descriptored : descriptoredList) {
-            EntryTriple fromEntry = new EntryTriple(fromClass, descriptored.getName("searge"), descriptored.getDescriptor("searge"));
-            putInto.put(fromEntry, descriptored.getName("intermediary"));
+    private static  <T extends IMappingFile.IField> void recordFields(Collection<T> fields, NamespaceData data, String fromClass) {
+        for (T field : fields) {
+            if (field.getOriginal().startsWith("f_") && field.getOriginal().endsWith("_")) {
+                data.fieldNames.put(new Triple(fromClass, field.getOriginal(), field.getDescriptor()), field.getMapped());
+                data.ownerlessFields.put(new Tuple(field.getOriginal(), field.getDescriptor()), field.getMapped());
+            }
+        }
+    }
+
+    private static  <T extends IMappingFile.IMethod> void recordMethods(Collection<T> methods, NamespaceData data, String fromClass) {
+        for (T method : methods) {
+            if (method.getOriginal().startsWith("m_") && method.getOriginal().endsWith("_")) {
+                data.methodNames.put(new Triple(fromClass, method.getOriginal(), method.getDescriptor()), method.getMapped());
+                data.ownerlessMethods.put(new Tuple(method.getOriginal(), method.getDescriptor()), method.getMapped());
+                data.methodsNoReturn.put(new Triple(fromClass, method.getOriginal(), method.getDescriptor().substring(0, method.getDescriptor().indexOf(")"))), method.getMapped());
+            }
         }
     }
 
     private static class NamespaceData {
         private final Map<String, String> classNames = new HashMap<>();
         private final Map<String, String> classNamesInverse = new HashMap<>();
-        private final Map<EntryTriple, String> fieldNames = new HashMap<>();
-        private final Map<EntryTriple, String> methodNames = new HashMap<>();
+
+        private final Map<String, String> packages = new HashMap<>();
+
+        private final Map<Triple, String> fieldNames = new HashMap<>();
+        private final Map<Triple, String> methodNames = new HashMap<>();
+
+        private final Map<Tuple, String> ownerlessFields = new HashMap<>();
+        private final Map<Tuple, String> ownerlessMethods = new HashMap<>();
+
+        private final Map<Triple, String> methodsNoReturn = new HashMap<>();
     }
 
-    public record EntryTriple(String owner, String name, String desc) {
+    public record Triple(String owner, String name, String desc) {
     }
 
     public record Tuple(String name, String desc) {

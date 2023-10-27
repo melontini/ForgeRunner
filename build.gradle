@@ -13,6 +13,9 @@ repositories {
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
+    maven {
+        url 'https://maven.neoforged.net/releases/'
+    }
     mavenCentral()
 }
 
@@ -25,6 +28,8 @@ dependencies {
     implementation(include('com.electronwill.night-config:core:3.6.7'))
     implementation(include('com.electronwill.night-config:toml:3.6.7'))
     implementation(include('com.electronwill.night-config:json:3.6.7'))
+
+    implementation(include('net.minecraftforge:srgutils:0.5.4'))
 }
 
 loom.mods.register("forgerunner") {
