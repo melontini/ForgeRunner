@@ -3,6 +3,7 @@ package me.melontini.forgerunner.loader.remapping;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 import me.melontini.forgerunner.util.Loader;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraftforge.srgutils.IMappingFile;
 import org.objectweb.asm.Type;
 
@@ -19,6 +20,7 @@ public class SrgRemapper {
 
     @SneakyThrows
     public static void load() {
+        FabricLoader.getInstance().getMappingResolver().mapClassName("intermediary", ""); //init mappings resolver for intermediary
         IMappingFile mappingFile = IMappingFile.load(Files.newInputStream(Loader.HIDDEN_FOLDER.resolve("mappings.tiny")));
 
         NamespaceData data = new NamespaceData();
@@ -91,16 +93,14 @@ public class SrgRemapper {
         return data.methodNames.getOrDefault(new Triple(annotationClass, name, "()" + attributeDesc), name);
     }
 
-    private static  <T extends IMappingFile.IField> void recordFields(Collection<T> fields, NamespaceData data, String fromClass) {
+    private static <T extends IMappingFile.IField> void recordFields(Collection<T> fields, NamespaceData data, String fromClass) {
         for (T field : fields) {
-            if (field.getOriginal().startsWith("f_") && field.getOriginal().endsWith("_")) {
-                data.fieldNames.put(new Triple(fromClass, field.getOriginal(), field.getDescriptor()), field.getMapped());
-                data.ownerlessFields.put(new Tuple(field.getOriginal(), field.getDescriptor()), field.getMapped());
-            }
+            data.fieldNames.put(new Triple(fromClass, field.getOriginal(), field.getDescriptor()), field.getMapped());
+            data.ownerlessFields.put(new Tuple(field.getOriginal(), field.getDescriptor()), field.getMapped());
         }
     }
 
-    private static  <T extends IMappingFile.IMethod> void recordMethods(Collection<T> methods, NamespaceData data, String fromClass) {
+    private static <T extends IMappingFile.IMethod> void recordMethods(Collection<T> methods, NamespaceData data, String fromClass) {
         for (T method : methods) {
             if (method.getOriginal().startsWith("m_") && method.getOriginal().endsWith("_")) {
                 data.methodNames.put(new Triple(fromClass, method.getOriginal(), method.getDescriptor()), method.getMapped());

@@ -52,7 +52,7 @@ public class RefmapRemapper {
         if (reference.startsWith("L")) {
             owner = reference.substring(0, reference.indexOf(";") + 1);
         }
-        String left = owner!=null ? reference.replaceFirst(owner, "") : reference;
+        String left = owner != null ? reference.substring(reference.indexOf(";") + 1) : reference;
         if (reference.contains(":")) {
             return remapField(owner, left.substring(0, left.indexOf(":")), left.substring(left.indexOf(":") + 1), remapper);
         }

@@ -20,7 +20,7 @@ import java.util.*;
 @Log4j2
 public class ModInjector {
 
-    private static final List<ModContainerImpl> FORGE_MODS = new ArrayList<>();
+    public static final List<ModContainerImpl> FORGE_MODS = new ArrayList<>();
     private static final Map<String, List<String>> ALIASES = Map.of(
             "com_github_llamalad7_mixinextras", List.of("mixinextras")
     );//TODO: use a service

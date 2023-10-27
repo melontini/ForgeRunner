@@ -3,6 +3,7 @@ package me.melontini.forgerunner.mod;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,7 +39,8 @@ public class ModJson implements ByteConvertible {
     public void entrypoint(String entrypoint, String notation) {
         JsonObject entrypoints = backing.get("entrypoints").getAsJsonObject();
         JsonArray ep = entrypoints.has(entrypoint) ? entrypoints.get(entrypoint).getAsJsonArray() : new JsonArray();
-        ep.add(notation);
+        JsonPrimitive notationPrimitive = new JsonPrimitive(notation);
+        if (!ep.contains(notationPrimitive)) ep.add(notationPrimitive);
         entrypoints.add(entrypoint, ep);
     }
 
