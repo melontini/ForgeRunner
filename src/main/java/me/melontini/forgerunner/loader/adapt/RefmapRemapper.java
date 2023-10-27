@@ -3,14 +3,14 @@ package me.melontini.forgerunner.loader.adapt;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import me.melontini.forgerunner.loader.remapping.ForgeRunnerRemapper;
 import me.melontini.forgerunner.loader.remapping.SrgRemapper;
 
 import java.util.HashSet;
 import java.util.Map;
 
-@Slf4j
+@Log4j2
 public class RefmapRemapper {
 
     public static void remap(JsonObject object, ForgeRunnerRemapper remapper) {

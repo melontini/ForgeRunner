@@ -1,7 +1,7 @@
 package me.melontini.forgerunner.loader.remapping;
 
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import me.melontini.forgerunner.util.Loader;
 import net.minecraftforge.srgutils.IMappingFile;
 import org.objectweb.asm.Type;
@@ -11,7 +11,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-@Slf4j
+@Log4j2
 public class SrgRemapper {
 
     private static NamespaceData data;

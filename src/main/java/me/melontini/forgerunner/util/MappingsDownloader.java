@@ -1,6 +1,6 @@
 package me.melontini.forgerunner.util;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -8,7 +8,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-@Slf4j
+@Log4j2
 public class MappingsDownloader {
 
     public static void downloadMappings() throws IOException {

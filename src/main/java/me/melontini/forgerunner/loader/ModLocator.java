@@ -1,7 +1,7 @@
 package me.melontini.forgerunner.loader;
 
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import me.melontini.forgerunner.util.Exceptions;
 import me.melontini.forgerunner.util.JarPath;
 import me.melontini.forgerunner.util.Loader;
@@ -25,7 +25,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.jar.JarFile;
 
-@Slf4j
+@Log4j2
 public class ModLocator {
 
     static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();

@@ -1,6 +1,6 @@
 package me.melontini.forgerunner.loader;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import me.melontini.forgerunner.loader.adapt.ModAdapter;
 import me.melontini.forgerunner.loader.remapping.SrgRemapper;
 import me.melontini.forgerunner.util.JarPath;
@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Set;
 
-@Slf4j
+@Log4j2
 public class EarlyBootstrap implements LanguageAdapter {
 
     static {

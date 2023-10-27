@@ -1,6 +1,6 @@
 package me.melontini.forgerunner.loader;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import me.melontini.forgerunner.loader.adapt.ModAdapter;
 import me.melontini.forgerunner.loader.remapping.SrgRemapper;
 import me.melontini.forgerunner.mod.Environment;
@@ -24,7 +24,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.Map;
 
-@Slf4j
+@Log4j2
 public class MixinHacks {
 
     public static void bootstrap() {

@@ -1,7 +1,7 @@
 package me.melontini.forgerunner.loader;
 
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import me.melontini.forgerunner.util.Loader;
 import net.fabricmc.loader.impl.ModContainerImpl;
 import net.fabricmc.loader.impl.discovery.*;
@@ -17,7 +17,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 //Close your eyes
-@Slf4j
+@Log4j2
 public class ModInjector {
 
     private static final List<ModContainerImpl> FORGE_MODS = new ArrayList<>();

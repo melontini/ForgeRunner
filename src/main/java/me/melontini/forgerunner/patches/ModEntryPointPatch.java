@@ -1,6 +1,6 @@
 package me.melontini.forgerunner.patches;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import me.melontini.forgerunner.mod.ModFile;
 import net.fabricmc.api.ModInitializer;
 import org.objectweb.asm.MethodVisitor;
@@ -11,7 +11,7 @@ import org.objectweb.asm.tree.MethodNode;
 
 import java.util.ArrayList;
 
-@Slf4j
+@Log4j2
 public class ModEntryPointPatch implements Patch {
 
     private static final Type MOD_INITIALIZER = Type.getType(ModInitializer.class);
