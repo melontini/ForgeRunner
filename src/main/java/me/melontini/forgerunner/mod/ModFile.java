@@ -165,6 +165,9 @@ public class ModFile implements IModFile {
     public void removeFile(String name) {
         this.files.remove(name);
     }
+    public boolean hasFile(String name) {
+        return this.files.containsKey(name);
+    }
 
     @Override
     public byte[] toBytes() {

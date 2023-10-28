@@ -20,4 +20,5 @@ public interface IModFile extends ByteConvertible {
     ByteConvertible getFile(String name);
     void putFile(String name, ByteConvertible file);
     void removeFile(String name);
+    boolean hasFile(String name);
 }

@@ -7,4 +7,5 @@ import java.util.function.BiFunction;
 public interface IModClass extends ByteConvertible {
 
     void accept(BiFunction<String, byte[], byte[]> transformer);
+    String name();
 }
