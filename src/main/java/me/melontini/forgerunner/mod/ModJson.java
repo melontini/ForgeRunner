@@ -4,12 +4,13 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import me.melontini.forgerunner.api.adapt.IModJson;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-public class ModJson implements ByteConvertible {
+public class ModJson implements IModJson {
 
     private final JsonObject backing = new JsonObject();
 

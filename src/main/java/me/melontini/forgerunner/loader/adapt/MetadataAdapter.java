@@ -1,14 +1,22 @@
 package me.melontini.forgerunner.loader.adapt;
 
+import com.electronwill.nightconfig.core.CommentedConfig;
+import com.electronwill.nightconfig.json.JsonFormat;
+import com.electronwill.nightconfig.toml.TomlFormat;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import me.melontini.forgerunner.mod.ModFile;
-import me.melontini.forgerunner.mod.ModJson;
+import me.melontini.forgerunner.api.ByteConvertible;
+import me.melontini.forgerunner.api.adapt.Adapter;
+import me.melontini.forgerunner.api.adapt.IEnvironment;
+import me.melontini.forgerunner.api.adapt.IModFile;
+import me.melontini.forgerunner.api.adapt.IModJson;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStreamReader;
 import java.util.Map;
 
-public class MetadataAdapter {
+public class MetadataAdapter implements Adapter {
 
     private static final Map<String, String> MOD_INFO = ImmutableMap.<String, String>builder()
             .put("modId", "id")
@@ -21,14 +29,14 @@ public class MetadataAdapter {
 
     //TODO: dependencies.
     //TODO: environment.
-    static void adapt(JsonObject forge, ModFile file) {
+    static void adapt(JsonObject forge, IModFile file) {
         JsonArray modInfoArray = forge.get("mods").getAsJsonArray();
         if (modInfoArray.size() > 1) {
             throw new IllegalStateException("Multiple mods in a single jar file are not supported (yet?)");
         }
         JsonObject modInfo = modInfoArray.get(0).getAsJsonObject();
 
-        ModJson fabric = file.modJson();
+        IModJson fabric = file.modJson();
         fabric.accept(object -> MOD_INFO.forEach((key, value) -> {
             if (modInfo.has(key)) object.add(value, modInfo.get(key));
         }));
@@ -39,5 +47,23 @@ public class MetadataAdapter {
         if (forge.has("displayURL"))
             contact.add("homepage", forge.get("displayURL"));
         fabric.accept(object -> object.add("contact", contact));
+    }
+
+    @Override
+    public void adapt(IModFile mod, IEnvironment env) {
+        if (mod.hasForgeMeta()) {
+            ByteConvertible forge = mod.getFile("META-INF/mods.toml");
+            if (forge == null) return;
+
+            CommentedConfig cc = TomlFormat.instance().createParser().parse(new InputStreamReader(new ByteArrayInputStream(forge.toBytes())));
+            JsonObject forgeMeta = env.gson().fromJson(JsonFormat.minimalInstance().createWriter().writeToString(cc), JsonObject.class);
+
+            MetadataAdapter.adapt(forgeMeta, mod);
+        }
+    }
+
+    @Override
+    public long priority() {
+        return 0;
     }
 }

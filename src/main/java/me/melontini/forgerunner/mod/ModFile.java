@@ -6,6 +6,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import me.melontini.forgerunner.api.ByteConvertible;
+import me.melontini.forgerunner.api.adapt.IModClass;
+import me.melontini.forgerunner.api.adapt.IModFile;
 import me.melontini.forgerunner.util.Exceptions;
 import me.melontini.forgerunner.util.JarPath;
 import org.spongepowered.asm.util.Constants;
@@ -22,7 +25,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 @Accessors(fluent = true)
-public class ModFile implements ByteConvertible {
+public class ModFile implements IModFile {
 
     private final Map<String, ByteConvertible> files = new HashMap<>();
     private final Map<String, ModClass> classes = new HashMap<>();
@@ -139,7 +142,7 @@ public class ModFile implements ByteConvertible {
         return modJson().mixinConfigs();
     }
 
-    public Collection<ModClass> classes() {
+    public Collection<IModClass> classes() {
         return Collections.unmodifiableCollection(this.classes.values());
     }
 

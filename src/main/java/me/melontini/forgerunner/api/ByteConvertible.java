@@ -1,4 +1,4 @@
-package me.melontini.forgerunner.mod;
+package me.melontini.forgerunner.api;
 
 public interface ByteConvertible {
     byte[] toBytes();

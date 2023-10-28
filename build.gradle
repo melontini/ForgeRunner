@@ -35,9 +35,9 @@ dependencies {
     implementation(include('net.minecraftforge:srgutils:0.5.4'))
 
     //Forge deps
-    implementation(include('net.minecraftforge:eventbus:6.2.0'))
+    api(include('net.minecraftforge:eventbus:6.2.0'))
     include('net.jodah:typetools:0.6.3')
-    implementation(include('org.apache.maven:maven-artifact:3.8.1'))
+    api(include('org.apache.maven:maven-artifact:3.8.1'))
 }
 
 loom.mods.register("forgerunner") {

@@ -2,6 +2,7 @@ package me.melontini.forgerunner.mod;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import me.melontini.forgerunner.api.ByteConvertible;
 
 import java.io.Reader;
 

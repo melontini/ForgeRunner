@@ -1,7 +1,8 @@
 package me.melontini.forgerunner.patches;
 
 import lombok.extern.log4j.Log4j2;
-import me.melontini.forgerunner.mod.ModFile;
+import me.melontini.forgerunner.api.adapt.IModFile;
+import me.melontini.forgerunner.api.patch.ClassPatch;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -17,7 +18,7 @@ public class ModEntryPointPatch implements ClassPatch {
     private static final String MOD = "Lnet/minecraftforge/fml/common/Mod;";
 
     @Override
-    public void patch(ClassNode node, ModFile modFile) {
+    public void patch(ClassNode node, IModFile modFile) {
         if (node.visibleAnnotations != null) {
             if (node.visibleAnnotations.stream().anyMatch(annotation -> MOD.equals(annotation.desc))) {
                 modFile.modJson().entrypoint("forgerunner:main", node.name.replace("/", "."));
