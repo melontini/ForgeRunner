@@ -24,8 +24,6 @@ public class RefmapRemapper implements Adapter {
 
     public static void remap(JsonObject object, Remapper remapper) {
         if (!object.has("data")) return;
-        JsonObject data = object.get("data").getAsJsonObject();
-        if (!data.has("searge")) return;
 
         JsonObject mappings = object.get("mappings").getAsJsonObject();
         for (Map.Entry<String, JsonElement> entry : mappings.entrySet()) {
@@ -40,20 +38,24 @@ public class RefmapRemapper implements Adapter {
             }
         }
 
-        JsonObject searge = data.get("searge").getAsJsonObject();
-        for (Map.Entry<String, JsonElement> entry : searge.entrySet()) {
-            if (entry.getValue() instanceof JsonObject jo) {
-                HashSet<Map.Entry<String, JsonElement>> set = new HashSet<>(jo.entrySet());
-                for (Map.Entry<String, JsonElement> innerEntry : set) {
-                    if (innerEntry.getValue() instanceof JsonPrimitive jp && jp.isString()) {
-                        jo.remove(innerEntry.getKey());
-                        jo.add(innerEntry.getKey(), new JsonPrimitive(remapRef(jp.getAsString(), remapper)));
+        JsonObject data = object.get("data").getAsJsonObject();
+        for (Map.Entry<String, JsonElement> mappingData : new HashSet<>(data.entrySet())) {
+            for (Map.Entry<String, JsonElement> entry : mappingData.getValue().getAsJsonObject().entrySet()) {
+                if (entry.getValue() instanceof JsonObject jo) {
+                    HashSet<Map.Entry<String, JsonElement>> set = new HashSet<>(jo.entrySet());
+                    for (Map.Entry<String, JsonElement> innerEntry : set) {
+                        if (innerEntry.getValue() instanceof JsonPrimitive jp && jp.isString()) {
+                            jo.remove(innerEntry.getKey());
+                            jo.add(innerEntry.getKey(), new JsonPrimitive(remapRef(jp.getAsString(), remapper)));
+                        }
                     }
                 }
             }
+            if ("searge".equals(mappingData.getKey())) {
+                data.remove("searge");
+                data.add("named:intermediary", mappingData.getValue());
+            }
         }
-        data.remove("searge");
-        data.add("named:intermediary", searge);
     }
 
     private static String remapRef(String reference, Remapper remapper) {

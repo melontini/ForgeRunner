@@ -34,7 +34,7 @@ public class ModLocator {
         MethodHandle mh = pl.findStatic(DirectoryModCandidateFinder.class, "isValidFile", MethodType.methodType(boolean.class, Path.class));
         return path -> (Boolean) Exceptions.uncheck(() -> mh.invoke(path));
     });
-    private static final long CACHE_VERSION = 8;
+    private static final long CACHE_VERSION = 9;
 
     @SneakyThrows
     public static Set<JarPath> start() {
