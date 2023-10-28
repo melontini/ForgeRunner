@@ -2,7 +2,6 @@ package me.melontini.forgerunner.patches;
 
 import lombok.extern.log4j.Log4j2;
 import me.melontini.forgerunner.mod.ModFile;
-import net.fabricmc.api.ModInitializer;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -12,15 +11,16 @@ import org.objectweb.asm.tree.MethodNode;
 import java.util.ArrayList;
 
 @Log4j2
-public class ModEntryPointPatch implements Patch {
+public class ModEntryPointPatch implements ClassPatch {
 
-    private static final Type MOD_INITIALIZER = Type.getType(ModInitializer.class);
+    private static final Type MOD_INITIALIZER = Type.getObjectType("net/fabricmc/api/ModInitializer");
+    private static final String MOD = "Lnet/minecraftforge/fml/common/Mod;";
 
     @Override
     public void patch(ClassNode node, ModFile modFile) {
         if (node.visibleAnnotations != null) {
-            if (node.visibleAnnotations.stream().anyMatch(annotation -> annotation.desc.equals("Lnet/minecraftforge/fml/common/Mod;"))) {
-                modFile.modJson().entrypoint("main", node.name.replace("/", "."));
+            if (node.visibleAnnotations.stream().anyMatch(annotation -> MOD.equals(annotation.desc))) {
+                modFile.modJson().entrypoint("forgerunner:main", node.name.replace("/", "."));
 
                 if (node.interfaces == null) node.interfaces = new ArrayList<>();
                 node.interfaces.add(MOD_INITIALIZER.getInternalName());

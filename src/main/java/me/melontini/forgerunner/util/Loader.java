@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -61,7 +62,7 @@ public class Loader {
         });
     }
 
-    public static void appendMods(List<ModContainerImpl> mods) {
+    public static void appendMods(Set<ModContainerImpl> mods) {
         List<ModContainerImpl> mergedMods = new ArrayList<>(getMods());
         mergedMods.addAll(mods);
         MODS_SETTER.accept(mergedMods);

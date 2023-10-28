@@ -65,10 +65,7 @@ public class RefmapRemapper {
     }
 
     private static String remapField(String owner, String name, String desc, ForgeRunnerRemapper remapper) {
-        String top = SrgRemapper.getFieldOwner(name, desc);
-
-        String s = top != null ? top : owner != null ? owner.substring(1, owner.length() - 1) : "";
-        name = SrgRemapper.mapFieldName(s, name, desc);
+        name = SrgRemapper.mapFieldName(owner, name, desc);
         desc = remapper.mapDesc(desc);
 
         String mappedOwner = owner != null ? remapper.mapDesc(owner) : "";
@@ -76,10 +73,7 @@ public class RefmapRemapper {
     }
 
     private static String remapMethod(String owner, String name, String desc, ForgeRunnerRemapper remapper) {
-        String top = SrgRemapper.getMethodOwner(name, desc);
-
-        String s = top != null ? top : owner != null ? owner.substring(1, owner.length() - 1) : "";
-        name = SrgRemapper.mapMethodName(s, name, desc);
+        name = SrgRemapper.mapMethodName(owner, name, desc);
         desc = remapper.mapMethodDesc(desc);
 
         String mappedOwner = owner != null ? remapper.mapDesc(owner) : "";

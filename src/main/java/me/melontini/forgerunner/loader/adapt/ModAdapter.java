@@ -71,8 +71,8 @@ public class ModAdapter {
             log.debug("Adapting {}", mod.jar().path().getFileName());
 
             try {
-                remapMixinConfigs(mod);
                 adaptModMetadata(gson, mod);
+                remapMixinConfigs(mod);
                 transformClasses(mod, frr);
             } catch (Throwable t) {
                 log.error("Failed to adapt mod " + mod.id(), t);

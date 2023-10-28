@@ -14,6 +14,8 @@ Currently, can:
 - [x] Basic JarJar support.
 - [x] Remapping mods to `intermediary`.
 - [x] Main entrypoint injection.
+- [x] Entrypoint discovery
+- - Main, Client, Server, AutoEventSubscriber
 
 What needs to be done:
 
@@ -25,7 +27,6 @@ What needs to be done:
 - - Forge methods.
 - - etc.
 - Entrypoint discovery
-- - Main, Client, Server.
 - - PreLaunch.
 - Mixin fixes & CoreMods.
 - - LVTs, patched methods & constructors & more.
@@ -39,6 +40,9 @@ You can also check out [Kilt](https://github.com/KiltMC/Kilt)! It's also a Forge
 
 ***
 
-Includes: 
-- [Night Config](https://github.com/TheElectronWill/night-config) licensed under [GNU Lesser General Public License v3.0](https://github.com/TheElectronWill/night-config/blob/master/LICENSE)
+Includes:
 - .tiny srg -> intermediary mappings file generated using [srg2intermediary](https://github.com/KiltMC/srg2intermediary)
+- [TypeTools](https://github.com/jhalterman/typetools)
+- [EventBus](https://github.com/MinecraftForge/EventBus)
+- [Night Config](https://github.com/TheElectronWill/night-config)
+- [Maven Artifact](https://maven.apache.org/ref/3.9.5/maven-artifact/)

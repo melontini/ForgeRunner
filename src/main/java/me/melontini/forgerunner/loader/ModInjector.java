@@ -2,6 +2,7 @@ package me.melontini.forgerunner.loader;
 
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
+import me.melontini.forgerunner.forge.mod.Mods;
 import me.melontini.forgerunner.util.Loader;
 import net.fabricmc.loader.impl.ModContainerImpl;
 import net.fabricmc.loader.impl.discovery.*;
@@ -20,7 +21,6 @@ import java.util.*;
 @Log4j2
 public class ModInjector {
 
-    public static final List<ModContainerImpl> FORGE_MODS = new ArrayList<>();
     private static final Map<String, List<String>> ALIASES = Map.of(
             "com_github_llamalad7_mixinextras", List.of("mixinextras")
     );//TODO: use a service
@@ -76,7 +76,7 @@ public class ModInjector {
             }
 
             ModContainerImpl container = new ModContainerImpl(mod);
-            FORGE_MODS.add(container);
+            Mods.addForgeMod(container);
             modMap.put(mod.getId(), container);
 
             for (String provides : mod.getProvides()) {
@@ -84,12 +84,12 @@ public class ModInjector {
             }
         }
 
-        for (ModContainerImpl forgeMod : FORGE_MODS) {
+        for (ModContainerImpl forgeMod : Mods.getForgeMods()) {
             for (Path path : forgeMod.getCodeSourcePaths()) {
                 FabricLauncherBase.getLauncher().addToClassPath(path);
             }
         }
 
-        Loader.appendMods(FORGE_MODS);
+        Loader.appendMods(Mods.getForgeMods());
     }
 }

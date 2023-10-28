@@ -16,6 +16,10 @@ public class ModJson implements ByteConvertible {
     public ModJson() {
         backing.addProperty("schemaVersion", 1);
         backing.add("entrypoints", new JsonObject());
+
+        JsonObject custom = new JsonObject();
+        custom.addProperty("forgerunner:forge_mod", true);
+        backing.add("custom", custom);
     }
 
     public void accept(Consumer<JsonObject> consumer) {

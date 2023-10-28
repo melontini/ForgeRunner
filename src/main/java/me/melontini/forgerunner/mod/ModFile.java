@@ -159,6 +159,9 @@ public class ModFile implements ByteConvertible {
     public void putFile(String name, ByteConvertible file) {
         this.files.put(name, file);
     }
+    public void removeFile(String name) {
+        this.files.remove(name);
+    }
 
     @Override
     public byte[] toBytes() {

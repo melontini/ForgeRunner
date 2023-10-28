@@ -12,6 +12,18 @@
   "icon": "assets/forgerunner/icon.png",
   "environment": "*",
   "entrypoints": {
+    "preLaunch": [
+      "me.melontini.forgerunner.forge.entrypoints.ContextLoader::onPreLaunch"
+    ],
+    "main": [
+      "me.melontini.forgerunner.forge.entrypoints.ContextLoader::onMain"
+    ],
+    "client": [
+      "me.melontini.forgerunner.forge.entrypoints.ContextLoader::onClient"
+    ],
+    "server": [
+      "me.melontini.forgerunner.forge.entrypoints.ContextLoader::onServer"
+    ]
   },
   "mixins": [
     "forgerunner.mixins.json"

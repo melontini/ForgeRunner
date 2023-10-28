@@ -76,7 +76,10 @@ public class SrgRemapper {
     public static String mapFieldName(String owner, String name, String descriptor) {
         String mapped = data.fieldNames.get(new Triple(owner, name, descriptor));
         if (mapped != null) return mapped;
-        return data.ownerlessFields.getOrDefault(new Tuple(name, descriptor), name);
+        mapped = data.ownerlessFields.get(new Tuple(name, descriptor));
+        if (mapped != null) return mapped;
+        IMappingFile.IClass iClass = getMappingFile().getClass(owner);
+        return iClass != null ? iClass.remapField(name) : name;
     }
 
     public static String mapMethodName(String owner, String name, String descriptor) {
