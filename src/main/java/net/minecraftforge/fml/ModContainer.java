@@ -1,9 +1,9 @@
 package net.minecraftforge.fml;
 
-import net.fabricmc.loader.impl.ModContainerImpl;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.fml.event.IModBusEvent;
-import net.minecraftforge.forgespi.language.DelegatedInfo;
+import net.minecraftforge.fml.loading.moddiscovery.ModFileInfo;
+import net.minecraftforge.fml.loading.moddiscovery.ModInfo;
 import net.minecraftforge.forgespi.language.IModInfo;
 
 import java.util.IdentityHashMap;
@@ -13,22 +13,22 @@ import java.util.function.Supplier;
 
 public abstract class ModContainer {
 
-    private final ModContainerImpl delegate;
-    private final DelegatedInfo modInfo;
+    private final ModFileInfo delegate;
+    private final ModInfo modInfo;
     protected Supplier<?> contextExtension;
     protected final Map<Class<? extends IExtensionPoint<?>>, Supplier<?>> extensionPoints = new IdentityHashMap<>();
 
-    public ModContainer(ModContainerImpl delegate) {
+    public ModContainer(ModFileInfo delegate) {
         this.delegate = delegate;
-        this.modInfo = new DelegatedInfo(delegate);
+        this.modInfo = new ModInfo(delegate);
     }
 
     public final String getModId() {
-        return delegate.getMetadata().getId();
+        return modInfo.getModId();
     }
 
     public final String getNamespace() {
-        return delegate.getMetadata().getId();
+        return modInfo.getNamespace();
     }
 
     public IModInfo getModInfo() {

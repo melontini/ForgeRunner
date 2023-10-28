@@ -1,7 +1,7 @@
 package net.minecraftforge.fml.loading.moddiscovery;
 
-import me.melontini.forgerunner.forge.mod.Mods;
 import net.fabricmc.loader.impl.ModContainerImpl;
+import net.minecraftforge.fml.loading.LoadingModList;
 import net.minecraftforge.forgespi.language.IModFileInfo;
 import net.minecraftforge.forgespi.language.IModInfo;
 
@@ -11,16 +11,14 @@ import java.util.Map;
 public class ModFileInfo implements IModFileInfo {
 
     private final ModContainerImpl delegate;
-    private final IModInfo modInfo;
 
     public ModFileInfo(ModContainerImpl container) {
         this.delegate = container;
-        this.modInfo = Mods.getFromDelegate(container).getModInfo();
     }
 
     @Override
     public List<IModInfo> getMods() {
-        return List.of(modInfo);
+        return List.of(LoadingModList.fr$getModInfo(this));
     }
 
     @Override
@@ -56,5 +54,9 @@ public class ModFileInfo implements IModFileInfo {
     @Override
     public List<String> usesServices() {
         return List.of();
+    }
+
+    public ModContainerImpl fr$getModContainer() {
+        return delegate;
     }
 }

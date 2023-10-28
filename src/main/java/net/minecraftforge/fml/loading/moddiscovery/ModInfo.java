@@ -1,7 +1,9 @@
-package net.minecraftforge.forgespi.language;
+package net.minecraftforge.fml.loading.moddiscovery;
 
 import net.fabricmc.loader.impl.ModContainerImpl;
-import net.minecraftforge.fml.loading.LoadingModList;
+import net.minecraftforge.forgespi.language.IConfigurable;
+import net.minecraftforge.forgespi.language.IModFileInfo;
+import net.minecraftforge.forgespi.language.IModInfo;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 
@@ -10,37 +12,39 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public class DelegatedInfo implements IModInfo {
+public class ModInfo implements IModInfo, IConfigurable {
 
-    private final ModContainerImpl delegate;
+    private final ModFileInfo delegate;
+    private final ModContainerImpl modContainer;
 
-    public DelegatedInfo(ModContainerImpl delegate) {
+    public ModInfo(ModFileInfo delegate) {
         this.delegate = delegate;
+        this.modContainer = delegate.fr$getModContainer();
     }
 
     @Override
     public IModFileInfo getOwningFile() {
-        return LoadingModList.get().getModFileById(delegate.getMetadata().getId());
+        return delegate;
     }
 
     @Override
     public String getModId() {
-        return delegate.getMetadata().getId();
+        return modContainer.getMetadata().getId();
     }
 
     @Override
     public String getDisplayName() {
-        return delegate.getMetadata().getName();
+        return modContainer.getMetadata().getName();
     }
 
     @Override
     public String getDescription() {
-        return delegate.getMetadata().getDescription();
+        return modContainer.getMetadata().getDescription();
     }
 
     @Override
     public ArtifactVersion getVersion() {
-        return new DefaultArtifactVersion(delegate.getMetadata().getVersion().getFriendlyString());
+        return new DefaultArtifactVersion(modContainer.getMetadata().getVersion().getFriendlyString());
     }
 
     @Override
@@ -50,7 +54,7 @@ public class DelegatedInfo implements IModInfo {
 
     @Override
     public String getNamespace() {
-        return this.delegate.getMetadata().getId();
+        return modContainer.getMetadata().getId();
     }
 
     @Override
@@ -70,11 +74,21 @@ public class DelegatedInfo implements IModInfo {
 
     @Override
     public Optional<String> getLogoFile() {
-        return delegate.getMetadata().getIconPath(256);
+        return modContainer.getMetadata().getIconPath(256);
     }
 
     @Override
     public boolean getLogoBlur() {
         return false;
+    }
+
+    @Override
+    public <T> Optional<T> getConfigElement(String... key) {
+        return Optional.empty(); //TODO
+    }
+
+    @Override
+    public List<? extends IConfigurable> getConfigList(String... key) {
+        return List.of(); //TODO
     }
 }

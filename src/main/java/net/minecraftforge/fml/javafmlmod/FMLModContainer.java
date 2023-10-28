@@ -8,6 +8,7 @@ import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModContainer;
 import net.minecraftforge.fml.event.IModBusEvent;
+import net.minecraftforge.fml.loading.LoadingModList;
 
 import java.util.function.Supplier;
 
@@ -21,7 +22,7 @@ public class FMLModContainer extends ModContainer {
 
 
     public FMLModContainer(ModContainerImpl delegate, Supplier<Object> modInstance) {
-        super(delegate);
+        super(LoadingModList.fr$getModFileByDelegate(delegate));
         this.modInstanceSupplier = modInstance;
         final var ext = new FMLJavaModLoadingContext(this);
         this.contextExtension = () -> ext;
