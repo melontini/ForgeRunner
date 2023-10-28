@@ -105,11 +105,9 @@ public class SrgRemapper {
 
     private static <T extends IMappingFile.IMethod> void recordMethods(Collection<T> methods, NamespaceData data, String fromClass) {
         for (T method : methods) {
-            if (method.getOriginal().startsWith("m_") && method.getOriginal().endsWith("_")) {
-                data.methodNames.put(new Triple(fromClass, method.getOriginal(), method.getDescriptor()), method.getMapped());
-                data.ownerlessMethods.put(new Tuple(method.getOriginal(), method.getDescriptor()), method.getMapped());
-                data.methodsNoReturn.put(new Triple(fromClass, method.getOriginal(), method.getDescriptor().substring(0, method.getDescriptor().indexOf(")"))), method.getMapped());
-            }
+            data.methodNames.put(new Triple(fromClass, method.getOriginal(), method.getDescriptor()), method.getMapped());
+            data.ownerlessMethods.put(new Tuple(method.getOriginal(), method.getDescriptor()), method.getMapped());
+            data.methodsNoReturn.put(new Triple(fromClass, method.getOriginal(), method.getDescriptor().substring(0, method.getDescriptor().indexOf(")"))), method.getMapped());
         }
     }
 
