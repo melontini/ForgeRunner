@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -132,6 +133,9 @@ public class ModFile implements IModFile {
     }
     public String version() {
         return modJson().version();
+    }
+    public Path path() {
+        return jar().path();
     }
 
     public Manifest manifest() {

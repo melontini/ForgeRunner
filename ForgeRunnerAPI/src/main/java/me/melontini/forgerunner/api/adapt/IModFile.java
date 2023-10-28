@@ -2,6 +2,7 @@ package me.melontini.forgerunner.api.adapt;
 
 import me.melontini.forgerunner.api.ByteConvertible;
 
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 
@@ -11,6 +12,7 @@ public interface IModFile extends ByteConvertible {
     IModJson modJson();
     String id();
     String version();
+    Path path();
 
     IManifest manifest();
 

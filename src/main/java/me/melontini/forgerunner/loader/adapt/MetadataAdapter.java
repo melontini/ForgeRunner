@@ -6,6 +6,7 @@ import com.electronwill.nightconfig.toml.TomlFormat;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import lombok.extern.log4j.Log4j2;
 import me.melontini.forgerunner.api.ByteConvertible;
 import me.melontini.forgerunner.api.adapt.Adapter;
 import me.melontini.forgerunner.api.adapt.IEnvironment;
@@ -16,6 +17,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.util.Map;
 
+@Log4j2
 public class MetadataAdapter implements Adapter {
 
     private static final Map<String, String> MOD_INFO = ImmutableMap.<String, String>builder()
@@ -31,9 +33,7 @@ public class MetadataAdapter implements Adapter {
     //TODO: environment.
     static void adapt(JsonObject forge, IModFile file) {
         JsonArray modInfoArray = forge.get("mods").getAsJsonArray();
-        if (modInfoArray.size() > 1) {
-            throw new IllegalStateException("Multiple mods in a single jar file are not supported (yet?)");
-        }
+        if (modInfoArray.size() > 1) log.error("{} contains more than one mod in it's metadata, which is currently not supported. Issues may arise", file.path().getFileName());
         JsonObject modInfo = modInfoArray.get(0).getAsJsonObject();
 
         IModJson fabric = file.modJson();
