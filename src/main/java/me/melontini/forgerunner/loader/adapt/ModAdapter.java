@@ -31,14 +31,21 @@ public class ModAdapter {
         ForgeRunnerRemapper frr = new ForgeRunnerRemapper();
 
         Environment env = new Environment(new HashMap<>(), new Gson(), new LinkedHashSet<>(), frr);
-        log.info("Preparing modfiles...");
-        try {
-            for (JarPath jar : new LinkedHashSet<>(jars)) {
+        log.info("Preparing modfiles... 0%");
+        int processed = 0;
+        int lastPercent;
+        int percent = 0;
+        for (JarPath jar : new LinkedHashSet<>(jars)) {
+            try {
                 env.appendModFile((new ModFile(jar, env)));
+            } catch (Throwable t) {
+                log.error("Failed to prepare modfile %s".formatted(jar.path().getFileName()), t);
+                FabricGuiEntry.displayError("Failed to prepare modfile %s".formatted(jar.path().getFileName()), t, true);
             }
-        } catch (Throwable t) {
-            log.error("Failed to prepare modfiles", t);
-            FabricGuiEntry.displayError("Failed to prepare modfiles", t, true);
+            lastPercent = percent;
+            percent = Math.min(++processed * 100 / jars.size(), 100);
+            if (percent != lastPercent && percent % 10 == 0)
+                log.info("Preparing modfiles... %d%%".formatted(percent));
         }
 
         MixinHacks.bootstrap();
@@ -48,7 +55,8 @@ public class ModAdapter {
 
         List<Adapter> adapters = ServiceLoader.load(Adapter.class).stream().map(ServiceLoader.Provider::get).sorted((o1, o2) -> Comparator.<Long>naturalOrder().compare(o1.priority(), o2.priority())).toList();
 
-        log.info("Adapting modfiles...");
+        log.info("Adapting modfiles... 0%");
+        processed = 0;
         for (ModFile mod : env.modFiles()) {
             log.debug("Adapting {}", mod.jar().path().getFileName());
 
@@ -57,12 +65,17 @@ public class ModAdapter {
                     adapter.adapt(mod, env);
                 }
             } catch (Throwable t) {
-                log.error("Failed to adapt mod " + mod.id(), t);
-                FabricGuiEntry.displayError("Failed to adapt mod " + mod.id(), t, true);
+                log.error("Failed to adapt mod %s (%s)".formatted(mod.id(), mod.jar().path().getFileName()), t);
+                FabricGuiEntry.displayError("Failed to adapt mod %s (%s)".formatted(mod.id(), mod.jar().path().getFileName()), t, true);
             }
+            lastPercent = percent;
+            percent = Math.min(++processed * 100 / jars.size(), 100);
+            if (percent != lastPercent && percent % 10 == 0)
+                log.info("Adapting modfiles... %d%%".formatted(percent));
         }
 
-        log.info("Writing modfiles...");
+        log.info("Writing modfiles... 0%");
+        processed = 0;
         for (ModFile mod : env.modFiles()) {
             Path file = mod.jar().temp() ? null : Loader.REMAPPED_MODS.resolve(mod.jar().path().getFileName());
 
@@ -79,6 +92,10 @@ public class ModAdapter {
             } finally {
                 mod.jar().jarFile().close();
             }
+            lastPercent = percent;
+            percent = Math.min(++processed * 100 / jars.size(), 100);
+            if (percent != lastPercent && percent % 10 == 0)
+                log.info("Writing modfiles... %d%%".formatted(percent));
         }
         log.info("Done!");
 
