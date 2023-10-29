@@ -28,7 +28,7 @@ public class AtConverter implements Adapter {
             boolean mutable = at[0].endsWith("-f") || at[0].startsWith("protected");
             boolean widen = at[0].startsWith("public");
 
-            String cls = at[1].replace(".", "/");
+            String cls = at[1].replace('.', '/');
             if (at.length == 2) {
                 String mapped = SrgRemapper.mapClassName(cls);
                 if (widen) accessWidener.append("accessible ").append("class ")

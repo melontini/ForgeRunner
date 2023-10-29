@@ -21,7 +21,7 @@ public class ModEntryPointPatch implements ClassPatch {
     public void patch(ClassNode node, IModFile modFile) {
         if (node.visibleAnnotations != null) {
             if (node.visibleAnnotations.stream().anyMatch(annotation -> MOD.equals(annotation.desc))) {
-                modFile.modJson().entrypoint("forgerunner:main", node.name.replace("/", "."));
+                modFile.modJson().entrypoint("forgerunner:main", node.name.replace('/', '.'));
 
                 if (node.interfaces == null) node.interfaces = new ArrayList<>();
                 node.interfaces.add(MOD_INITIALIZER.getInternalName());

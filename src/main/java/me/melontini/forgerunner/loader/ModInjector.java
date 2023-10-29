@@ -31,7 +31,7 @@ public class ModInjector {
     public static void inject() {
         Map<String, ModContainerImpl> modMap = Loader.getModMap();
         for (ModContainerImpl mod : Loader.getInstance().getModsInternal()) {
-            modMap.putIfAbsent(mod.getMetadata().getId().replace("-", "_"), mod);
+            modMap.putIfAbsent(mod.getMetadata().getId().replace('-', '_'), mod);
             //Some mods use hyphens in their ID on Fabric and underscores on Forge, so we link hyphens with underscores.
         }
         ALIASES.forEach((s, strings) -> {

@@ -42,17 +42,17 @@ public class MixinHacks {
         IClassBytecodeProvider newProvider = new IClassBytecodeProvider() {
             final MappingResolver resolver = FabricLoader.getInstance().getMappingResolver();
             @Override public ClassNode getClassNode(String name) throws ClassNotFoundException, IOException {
-                if (name.startsWith("net/minecraft")) name = resolver.mapClassName("intermediary", SrgRemapper.mapClassName(name).replace("/", ".")).replace(".", "/");
+                if (name.startsWith("net/minecraft")) name = resolver.mapClassName("intermediary", SrgRemapper.mapClassName(name).replace('/', '.')).replace('.', '/');
                 try {return current.getClassNode(name);} catch (Throwable t) {return getNode(name);}
             }
 
             @Override public ClassNode getClassNode(String name, boolean runTransformers) throws ClassNotFoundException, IOException {
-                if (name.startsWith("net/minecraft")) name = resolver.mapClassName("intermediary", SrgRemapper.mapClassName(name).replace("/", ".")).replace(".", "/");
+                if (name.startsWith("net/minecraft")) name = resolver.mapClassName("intermediary", SrgRemapper.mapClassName(name).replace('/', '.')).replace('.', '/');
                 try {return current.getClassNode(name, runTransformers);} catch (Throwable t) {return getNode(name);}
             }
 
             private ClassNode getNode(String cls) throws ClassNotFoundException {
-                ModClass mc = env.classPool().get(cls.replace(".", "/"));
+                ModClass mc = env.classPool().get(cls.replace('.', '/'));
                 if (mc == null) throw new ClassNotFoundException();
                 byte[] bytes = mc.toBytes();
                 ClassNode node = new ClassNode();

@@ -112,7 +112,7 @@ public class ModFile implements IModFile {
             ModFile file = new ModFile(new JarPath(new JarFile(temp), temp.toPath(), true), environment);
             if (!file.hasForgeMeta()) {
                 JsonObject id = jarObj.get("identifier").getAsJsonObject();
-                String modId = (id.get("group").getAsString().replace(".", "_") + "_" + id.get("artifact").getAsString().replace(".", "-")).toLowerCase();
+                String modId = (id.get("group").getAsString().replace('.', '_') + '_' + id.get("artifact").getAsString().replace('.', '-')).toLowerCase();
                 String name = id.get("artifact").getAsString();
 
                 JsonObject version = jarObj.get("version").getAsJsonObject();

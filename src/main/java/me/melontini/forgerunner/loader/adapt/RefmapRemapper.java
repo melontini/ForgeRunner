@@ -68,15 +68,15 @@ public class RefmapRemapper implements Adapter {
 
     private static String remapRef(String reference, Remapper remapper) {
         String owner = null;
-        if (reference.startsWith("L") && reference.indexOf(";") != reference.length() - 1) {
-            owner = reference.substring(0, reference.indexOf(";") + 1);
+        if (reference.startsWith("L") && reference.indexOf(';') != reference.length() - 1) {
+            owner = reference.substring(0, reference.indexOf(';') + 1);
         }
-        String left = owner != null ? reference.substring(reference.indexOf(";") + 1) : reference;
+        String left = owner != null ? reference.substring(reference.indexOf(';') + 1) : reference;
         if (reference.contains(":")) {
-            return remapField(owner, left.substring(0, left.indexOf(":")), left.substring(left.indexOf(":") + 1), remapper);
+            return remapField(owner, left.substring(0, left.indexOf(':')), left.substring(left.indexOf(':') + 1), remapper);
         }
         if (reference.contains("(")) {
-            return remapMethod(owner, left.substring(0, left.indexOf("(")), left.substring(left.indexOf("(")), remapper);
+            return remapMethod(owner, left.substring(0, left.indexOf('(')), left.substring(left.indexOf('(')), remapper);
         }
         if ((reference.startsWith("L") || reference.startsWith("[")) && reference.endsWith(";"))
             return remapper.mapDesc(reference);
@@ -88,7 +88,7 @@ public class RefmapRemapper implements Adapter {
         desc = remapper.mapDesc(desc);
 
         String mappedOwner = owner != null ? remapper.mapDesc(owner) : "";
-        return mappedOwner + name + ":" + desc;
+        return mappedOwner + name + ':' + desc;
     }
 
     private static String remapMethod(String owner, String name, String desc, Remapper remapper) {

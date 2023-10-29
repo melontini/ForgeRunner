@@ -23,7 +23,7 @@ public class EventBusFixer implements ClassPatch {
     public void patch(ClassNode node, IModFile modFile) {
         if (node.visibleAnnotations != null) {
             if (node.visibleAnnotations.stream().anyMatch(annotation -> EVENT_SUBSCRIBER.equals(annotation.desc))) {
-                modFile.modJson().entrypoint("forgerunner:bus", node.name.replace("/", "."));
+                modFile.modJson().entrypoint("forgerunner:bus", node.name.replace('/', '.'));
 
                 if (node.methods != null) for (MethodNode methodNode : node.methods) {
                     if (methodNode.visibleAnnotations != null && methodNode.visibleAnnotations.stream().anyMatch(annotation -> SUBSCRIBE_EVENT.getDescriptor().equals(annotation.desc))) {
