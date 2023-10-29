@@ -22,9 +22,16 @@ public class ModEntryPointPatch implements ClassPatch {
         if (node.visibleAnnotations != null) {
             if (node.visibleAnnotations.stream().anyMatch(annotation -> MOD.equals(annotation.desc))) {
                 modFile.modJson().entrypoint("forgerunner:main", node.name.replace('/', '.'));
+                node.access = (node.access & ~(Opcodes.ACC_PRIVATE | Opcodes.ACC_PROTECTED)) | Opcodes.ACC_PUBLIC;
 
                 if (node.interfaces == null) node.interfaces = new ArrayList<>();
                 node.interfaces.add(MOD_INITIALIZER.getInternalName());
+
+                for (MethodNode methodNode : node.methods) {
+                    if ("<init>".equals(methodNode.name)) {
+                        methodNode.access = (methodNode.access & ~(Opcodes.ACC_PRIVATE | Opcodes.ACC_PROTECTED)) | Opcodes.ACC_PUBLIC;
+                    }
+                }
 
                 MethodNode method = node.methods.stream().filter(m -> "onInitialize".equals(m.name) && m.desc.equals("()V")).findFirst().orElse(null);
                 if (method != null) return;
