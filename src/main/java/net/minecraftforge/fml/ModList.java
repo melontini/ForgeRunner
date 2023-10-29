@@ -6,6 +6,8 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.impl.ModContainerImpl;
 
 import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public class ModList {
 
@@ -29,5 +31,16 @@ public class ModList {
 
     public int size() {
         return FabricLoader.getInstance().getAllMods().size();
+    }
+
+    public void forEachModContainer(BiConsumer<String, ModContainer> modContainerConsumer) {
+        Mods.consumeForgeMods(mod -> {
+            ModContainer container = Mods.getFromDelegate(mod);
+            modContainerConsumer.accept(container.getModId(), container);
+        });
+    }
+
+    public void forEachModInOrder(Consumer<ModContainer> containerConsumer) {
+        Mods.consumeForgeMods(mod -> containerConsumer.accept(Mods.getFromDelegate(mod)));
     }
 }
