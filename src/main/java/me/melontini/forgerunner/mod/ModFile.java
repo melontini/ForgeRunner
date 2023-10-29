@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import lombok.extern.log4j.Log4j2;
 import me.melontini.forgerunner.api.ByteConvertible;
 import me.melontini.forgerunner.api.adapt.IModClass;
 import me.melontini.forgerunner.api.adapt.IModFile;
@@ -26,6 +27,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 @Accessors(fluent = true)
+@Log4j2
 public class ModFile implements IModFile {
 
     private final Map<String, ByteConvertible> files = new HashMap<>();
@@ -73,6 +75,12 @@ public class ModFile implements IModFile {
                 this.modJson().mixinConfig(mixin);
             }
         }
+
+        jar.jarFile().stream().filter(entry -> entry.getRealName().endsWith(".RSA") || entry.getRealName().endsWith(".SF"))
+                .forEach(entry -> {
+                    log.debug("Removing signature file {}!", entry.getRealName());
+                    this.excludedEntries.add(entry.getRealName());
+                });
 
         //add every other file.
         jar.jarFile().stream().filter(entry -> !this.files.containsKey(entry.getRealName()))

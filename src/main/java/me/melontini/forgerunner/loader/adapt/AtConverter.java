@@ -25,7 +25,7 @@ public class AtConverter implements Adapter {
             for (int i = 0; i < at.length; i++) {at[i] = at[i].trim();}
 
             //Other types are not support and are pointless
-            boolean mutable = at[0].endsWith("-f");
+            boolean mutable = at[0].endsWith("-f") || at[0].startsWith("protected");
             boolean widen = at[0].startsWith("public");
 
             String cls = at[1].replace(".", "/");
@@ -40,16 +40,29 @@ public class AtConverter implements Adapter {
 
             String member = at[2];
             String mapped = SrgRemapper.mapClassName(cls);
-            if (member.contains("(")) {
+            if (member.startsWith("*")) {// Does not seem to be part of the spec https://github.com/MinecraftForge/AccessTransformers/blob/master/FMLAT.md
+                if (member.contains("(") && member.contains(")")) {
+                    IMappingFile.IClass iClass = SrgRemapper.getMappingFile().getClass(cls);
+                    if (iClass == null) return;
+                    for (IMappingFile.IMethod iMethod : iClass.getMethods()) {
+                        method(accessWidener, mapped, iMethod.getMapped(), iMethod.getMappedDescriptor(), mutable, widen);
+                    }
+                } else {
+                    IMappingFile.IClass iClass = SrgRemapper.getMappingFile().getClass(cls);
+                    if (iClass == null) return;
+                    for (IMappingFile.IField iField : iClass.getFields()) {
+                        field(accessWidener, mapped, iField.getMapped(), iField.getMappedDescriptor(), mutable, widen);
+                    }
+                }
+                return;
+            }
+            if (member.contains("(") && member.contains(")")) {
                 String name = member.substring(0, member.indexOf('('));
                 String desc = member.substring(member.indexOf('('));
                 member = SrgRemapper.mapMethodName(cls, name, desc);
                 String mappedDesc = env.frr().mapDesc(desc);
 
-                if (widen) accessWidener.append("accessible ").append("method ")
-                        .append(mapped).append(" ").append(member).append(" ").append(mappedDesc).append("\n");
-                if (mutable) accessWidener.append("extendable ").append("method ")
-                        .append(mapped).append(" ").append(member).append(" ").append(mappedDesc).append("\n");
+                method(accessWidener, mapped, member, mappedDesc, mutable, widen);
             } else {
                 //having to scrape by, since ATs don't provide field descriptors.
                 //This breaks mods transforming other mods, but why would you do that?
@@ -58,10 +71,7 @@ public class AtConverter implements Adapter {
                 IMappingFile.IField iField = iClass.getField(member);
                 if (iField == null) return;
 
-                if (widen) accessWidener.append("accessible ").append("field ")
-                        .append(mapped).append(" ").append(iField.getMapped()).append(" ").append(iField.getMappedDescriptor()).append("\n");
-                if (mutable) accessWidener.append("mutable ").append("field ")
-                        .append(mapped).append(" ").append(iField.getMapped()).append(" ").append(iField.getMappedDescriptor()).append("\n");
+                field(accessWidener, mapped, iField.getMapped(), iField.getMappedDescriptor(), mutable, widen);
             }
         });
 
@@ -69,6 +79,19 @@ public class AtConverter implements Adapter {
         mod.putFile(mod.id() + ".accesswidener", () -> aw);
         mod.modJson().accept(object -> object.addProperty("accessWidener", mod.id() + ".accesswidener"));
         mod.removeFile("META-INF/accesstransformer.cfg");
+    }
+
+    private static void method(StringBuilder aw, String cls, String method, String mappedDesc, boolean mutable, boolean widen) {
+        if (widen) aw.append("accessible ").append("method ")
+                .append(cls).append(" ").append(method).append(" ").append(mappedDesc).append("\n");
+        if (mutable) aw.append("extendable ").append("method ")
+                .append(cls).append(" ").append(method).append(" ").append(mappedDesc).append("\n");
+    }
+    private static void field(StringBuilder aw, String cls, String field, String mappedDesc, boolean mutable, boolean widen) {
+        if (widen) aw.append("accessible ").append("field ")
+                .append(cls).append(" ").append(field).append(" ").append(mappedDesc).append("\n");
+        if (mutable) aw.append("mutable ").append("field ")
+                .append(cls).append(" ").append(field).append(" ").append(mappedDesc).append("\n");
     }
 
     @Override

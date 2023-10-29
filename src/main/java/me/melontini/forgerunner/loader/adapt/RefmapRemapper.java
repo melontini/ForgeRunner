@@ -31,8 +31,12 @@ public class RefmapRemapper implements Adapter {
                 HashSet<Map.Entry<String, JsonElement>> set = new HashSet<>(jo.entrySet());
                 for (Map.Entry<String, JsonElement> innerEntry : set) {
                     if (innerEntry.getValue() instanceof JsonPrimitive jp && jp.isString()) {
-                        jo.remove(innerEntry.getKey());
-                        jo.add(innerEntry.getKey(), new JsonPrimitive(remapRef(jp.getAsString(), remapper)));
+                        try {
+                            jo.remove(innerEntry.getKey());
+                            jo.add(innerEntry.getKey(), new JsonPrimitive(remapRef(jp.getAsString(), remapper)));
+                        } catch (Throwable t) {
+                            throw  new IllegalStateException("Failed to remap refmap mappings! mixin: %s, ref: %s, mapped %s".formatted(entry.getKey(), innerEntry.getKey(), jp), t);
+                        }
                     }
                 }
             }
@@ -45,8 +49,12 @@ public class RefmapRemapper implements Adapter {
                     HashSet<Map.Entry<String, JsonElement>> set = new HashSet<>(jo.entrySet());
                     for (Map.Entry<String, JsonElement> innerEntry : set) {
                         if (innerEntry.getValue() instanceof JsonPrimitive jp && jp.isString()) {
-                            jo.remove(innerEntry.getKey());
-                            jo.add(innerEntry.getKey(), new JsonPrimitive(remapRef(jp.getAsString(), remapper)));
+                            try {
+                                jo.remove(innerEntry.getKey());
+                                jo.add(innerEntry.getKey(), new JsonPrimitive(remapRef(jp.getAsString(), remapper)));
+                            } catch (Throwable t) {
+                                throw  new IllegalStateException("Failed to remap refmap mappings! mixin: %s, ref: %s, mapped %s".formatted(entry.getKey(), innerEntry.getKey(), jp), t);
+                            }
                         }
                     }
                 }
@@ -60,7 +68,7 @@ public class RefmapRemapper implements Adapter {
 
     private static String remapRef(String reference, Remapper remapper) {
         String owner = null;
-        if (reference.startsWith("L")) {
+        if (reference.startsWith("L") && reference.indexOf(";") != reference.length() - 1) {
             owner = reference.substring(0, reference.indexOf(";") + 1);
         }
         String left = owner != null ? reference.substring(reference.indexOf(";") + 1) : reference;
