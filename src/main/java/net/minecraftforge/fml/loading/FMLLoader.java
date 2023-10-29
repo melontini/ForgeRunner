@@ -1,8 +1,10 @@
 package net.minecraftforge.fml.loading;
 
 import me.melontini.forgerunner.util.Loader;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraftforge.api.distmarker.Dist;
 
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,6 +14,14 @@ public class FMLLoader {
 
     public static Dist getDist() {
         return FMLEnvironment.dist;
+    }
+
+    public static LoadingModList getLoadingModList() {
+        return LoadingModList.get();
+    }
+
+    public static Path getGamePath() {
+        return FabricLoader.getInstance().getGameDir();
     }
 
     public static boolean isProduction() {

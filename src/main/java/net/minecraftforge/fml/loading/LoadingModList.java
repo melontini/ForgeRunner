@@ -40,4 +40,8 @@ public class LoadingModList {
     public List<ModInfo> getMods() {
         return modList.get();
     }
+
+    public List<EarlyLoadingException> getErrors() {
+        return List.of();//If we are here, no errors were caught :)
+    }
 }
