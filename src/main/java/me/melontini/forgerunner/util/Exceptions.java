@@ -4,6 +4,14 @@ import lombok.SneakyThrows;
 
 public class Exceptions {
 
+    public static <T> T illegalState() {
+        throw new IllegalStateException();
+    }
+
+    public static <T> T illegalState(String msg) {
+        throw new IllegalStateException(msg);
+    }
+
     @SneakyThrows
     public static <T> T uncheck(ThrowingSupplier<T> supplier) {
         return supplier.get();

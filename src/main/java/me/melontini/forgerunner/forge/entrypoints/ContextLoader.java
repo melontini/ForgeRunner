@@ -2,12 +2,15 @@ package me.melontini.forgerunner.forge.entrypoints;
 
 import lombok.extern.log4j.Log4j2;
 import me.melontini.forgerunner.forge.mod.Mods;
+import net.fabricmc.api.EnvType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.api.entrypoint.EntrypointContainer;
 import net.fabricmc.loader.impl.ModContainerImpl;
 import net.minecraftforge.fml.ModLoadingContext;
+import net.minecraftforge.fml.config.ConfigTracker;
+import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.*;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.javafmlmod.FMLModContainer;
@@ -33,6 +36,13 @@ public class ContextLoader {
             Mods.MOD_OBJECTS.put((ModContainerImpl) mod, modInitializer);//Cheeky, but should work IG
             modInitializer.onInitialize();
         });
+
+        Mods.consumeForgeMods(mod -> loadingMod(() -> FMLJavaModLoadingContext.get().getModEventBus().post(new FMLConstructModEvent(Mods.getFromDelegate(mod))), mod));
+
+        if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT) {
+            ConfigTracker.INSTANCE.loadConfigs(ModConfig.Type.CLIENT, FabricLoader.getInstance().getConfigDir());
+        }
+        ConfigTracker.INSTANCE.loadConfigs(ModConfig.Type.COMMON, FabricLoader.getInstance().getConfigDir());
 
         Mods.consumeForgeMods(mod -> loadingMod(() -> FMLJavaModLoadingContext.get().getModEventBus().post(new FMLCommonSetupEvent(Mods.getFromDelegate(mod))), mod));
     }

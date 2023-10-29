@@ -10,6 +10,7 @@ import net.minecraftforge.fml.ModContainer;
 import net.minecraftforge.fml.event.IModBusEvent;
 import net.minecraftforge.fml.loading.LoadingModList;
 
+import java.util.Optional;
 import java.util.function.Supplier;
 
 @Log4j2
@@ -26,6 +27,7 @@ public class FMLModContainer extends ModContainer {
         this.modInstanceSupplier = modInstance;
         final var ext = new FMLJavaModLoadingContext(this);
         this.contextExtension = () -> ext;
+        this.configHandler = Optional.of(ce->this.eventBus.post(ce.self()));
     }
 
     @Override

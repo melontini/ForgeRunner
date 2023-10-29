@@ -1,7 +1,7 @@
 package net.minecraftforge.fml.common;
 
+import me.melontini.forgerunner.forge.Bindings;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 
@@ -29,7 +29,7 @@ public @interface Mod {
 
         enum Bus {
 
-            FORGE(() -> MinecraftForge.EVENT_BUS),
+            FORGE(Bindings.getForgeBus()),
             MOD(() -> FMLJavaModLoadingContext.get().getModEventBus());
 
             private final Supplier<IEventBus> busSupplier;
