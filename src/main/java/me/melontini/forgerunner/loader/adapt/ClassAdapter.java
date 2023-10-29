@@ -15,7 +15,6 @@ import org.spongepowered.asm.transformers.MixinClassWriter;
 import java.util.HashSet;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 
 @Log4j2
 public class ClassAdapter implements Adapter {
@@ -30,9 +29,8 @@ public class ClassAdapter implements Adapter {
 
     @Override
     public void adapt(IModFile mod, IEnvironment env) {
-        Set<CompletableFuture<?>> futures = new HashSet<>();
         for (IModClass aClass : mod.classes()) {
-            futures.add(CompletableFuture.runAsync(() -> aClass.accept((s, bytes) -> {
+            aClass.accept((s, bytes) -> {
                 ClassReader reader = new ClassReader(bytes);
                 ClassNode node = new ClassNode();
                 reader.accept(new ClassRemapper(node, env.frr()), 0);
@@ -44,9 +42,8 @@ public class ClassAdapter implements Adapter {
                 MixinClassWriter writer = new MixinClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
                 node.accept(writer);
                 return writer.toByteArray();
-            }), SERVICE));
+            });
         }
-        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
     }
 
     @Override

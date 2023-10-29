@@ -26,6 +26,10 @@ public class Exceptions {
         T get() throws Throwable;
     }
 
+    public interface ThrowingConsumer<T> {
+        void accept(T t) throws Throwable;
+    }
+
     public interface ThrowingRunnable {
         void run() throws Throwable;
     }
