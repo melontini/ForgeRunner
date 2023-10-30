@@ -49,7 +49,7 @@ public class EventBusFixer implements ClassPatch {
                 visitor.visitInsn(Opcodes.RETURN);
                 visitor.visitMaxs(1, 1);
                 visitor.visitEnd();
-                return Result.COMPUTE_MAXS_AND_FRAMES;
+                return Result.COMPUTE_MAXS;
             }
         }
         return Result.DEFAULT;
