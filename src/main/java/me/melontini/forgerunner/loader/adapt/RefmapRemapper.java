@@ -14,8 +14,12 @@ import me.melontini.forgerunner.mod.MixinConfig;
 import org.objectweb.asm.commons.Remapper;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Map;
 
@@ -120,5 +124,21 @@ public class RefmapRemapper implements Adapter {
     @Override
     public long priority() {
         return 30;
+    }
+
+    @Override
+    public void onPrepare(IModFile mod, IEnvironment env, FileSystem fs) throws IOException {
+        for (String mixinConfig : mod.mixinConfigs()) {
+            MixinConfig config = (MixinConfig) mod.getFile(mixinConfig);
+            if (config == null) continue;
+
+            String refmapFile = config.getRefMap();
+            if (refmapFile == null) continue;
+            Path p = fs.getPath(refmapFile);
+            if (!Files.exists(p)) continue;
+
+            byte[] bytes = Files.readAllBytes(p);
+            mod.putFile(refmapFile, () -> bytes);
+        }
     }
 }

@@ -16,7 +16,11 @@ import me.melontini.forgerunner.api.adapt.IModFile;
 import me.melontini.forgerunner.api.adapt.IModJson;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 
 @Log4j2
@@ -92,5 +96,14 @@ public class MetadataAdapter implements Adapter {
     @Override
     public long priority() {
         return 0;
+    }
+
+    @Override
+    public void onPrepare(IModFile mod, IEnvironment env, FileSystem fs) throws IOException {
+        Path p = fs.getPath("META-INF/mods.toml");
+        if (Files.exists(p)) {
+            byte[] bytes = Files.readAllBytes(p);
+            mod.putFile("META-INF/mods.toml", () -> bytes);
+        }
     }
 }

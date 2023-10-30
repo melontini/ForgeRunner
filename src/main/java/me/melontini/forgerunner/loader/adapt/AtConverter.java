@@ -7,6 +7,11 @@ import me.melontini.forgerunner.api.adapt.IModFile;
 import me.melontini.forgerunner.loader.remapping.SrgRemapper;
 import net.minecraftforge.srgutils.IMappingFile;
 
+import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 public class AtConverter implements Adapter {
     @Override
     public void adapt(IModFile mod, IEnvironment env) {
@@ -97,5 +102,14 @@ public class AtConverter implements Adapter {
     @Override
     public long priority() {
         return 62;
+    }
+
+    @Override
+    public void onPrepare(IModFile mod, IEnvironment env, FileSystem fs) throws IOException {
+        Path p = fs.getPath("META-INF/accesstransformer.cfg");
+        if (Files.exists(p)) {
+            byte[] bytes = Files.readAllBytes(p);
+            mod.putFile("META-INF/accesstransformer.cfg", () -> bytes);
+        }
     }
 }

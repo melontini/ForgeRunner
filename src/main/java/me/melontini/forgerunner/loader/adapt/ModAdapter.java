@@ -12,10 +12,12 @@ import me.melontini.forgerunner.util.Exceptions;
 import me.melontini.forgerunner.util.JarPath;
 import me.melontini.forgerunner.util.Loader;
 import net.fabricmc.loader.impl.gui.FabricGuiEntry;
+import net.fabricmc.loader.impl.util.FileSystemUtil;
 import org.spongepowered.asm.service.IClassBytecodeProvider;
 import org.spongepowered.asm.service.IMixinService;
 import org.spongepowered.asm.service.MixinService;
 
+import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -26,7 +28,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.zip.ZipOutputStream;
 
 @Log4j2
 public class ModAdapter {
@@ -38,7 +39,9 @@ public class ModAdapter {
         jars.removeIf(jar -> Files.exists(Loader.REMAPPED_MODS.resolve(jar.path().getFileName())));
         if (jars.isEmpty()) return;
 
-        final Environment env = new Environment(new ConcurrentHashMap<>(), new Gson(), Collections.synchronizedSet(new LinkedHashSet<>()), new ForgeRunnerRemapper());
+        final List<Adapter> adapters = ServiceLoader.load(Adapter.class).stream().map(ServiceLoader.Provider::get).sorted((o1, o2) -> Comparator.<Long>naturalOrder().compare(o1.priority(), o2.priority())).toList();
+
+        final Environment env = new Environment(new ConcurrentHashMap<>(), new Gson(), Collections.synchronizedSet(new LinkedHashSet<>()), new ForgeRunnerRemapper(), adapters);
 
         final AtomicInteger processed = new AtomicInteger();
         final AtomicInteger lastPercent = new AtomicInteger();
@@ -51,22 +54,24 @@ public class ModAdapter {
         };
 
         log.info("Preparing modfiles... 0%");
-        async(() -> stage.accept("Preparing"), jars, jar -> env.appendModFile((new ModFile(jar, env))));
+        async(() -> stage.accept("Preparing"), jars, jar -> {
+            Path p = Files.copy(jar.path(), Loader.REMAPPED_MODS.resolve(jar.path().getFileName()));
+
+            try (FileSystem fs = FileSystemUtil.getJarFileSystem(p, false).get()) {
+                ModFile mod = new ModFile(jar, fs, env);
+                env.appendModFile(mod, fs);
+            }
+        });
 
         MixinHacks.bootstrap();
         IClassBytecodeProvider current = MixinService.getService().getBytecodeProvider();
         IMixinService currentService = MixinService.getService();
         MixinHacks.crackMixinBytecodeProvider(current, currentService, env);
 
-        final List<Adapter> adapters = ServiceLoader.load(Adapter.class).stream().map(ServiceLoader.Provider::get).sorted((o1, o2) -> Comparator.<Long>naturalOrder().compare(o1.priority(), o2.priority())).toList();
-
         log.info("Adapting modfiles... 0%");
         processed.set(0);
-        async(() -> stage.accept("Adapting"), env.modFiles(), mod -> {
-            for (Adapter adapter : adapters) {
-                adapter.adapt(mod, env);
-            }
-        });
+        async(() -> stage.accept("Adapting"), env.modFiles(), mod ->
+                adapters.forEach(adapter -> adapter.adapt(mod, env)));
 
         log.info("Writing modfiles... 0%");
         processed.set(0);
@@ -74,8 +79,8 @@ public class ModAdapter {
             Path file = mod.jar().temp() ? null : Loader.REMAPPED_MODS.resolve(mod.jar().path().getFileName());
 
             if (file != null) {
-                try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(file))) {
-                    mod.writeToJar(zos);
+                try (FileSystem fs = FileSystemUtil.getJarFileSystem(file, false).get()) {
+                    mod.writeToJar(fs);
                 } finally {
                     mod.jar().jarFile().close();
                 }
@@ -112,6 +117,15 @@ public class ModAdapter {
             try {
                 future.future().get();
             } catch (Throwable t) {
+                Exceptions.uncheck(() -> {
+                    if (future.object instanceof JarPath jp) {
+                        Files.deleteIfExists(Loader.REMAPPED_MODS.resolve(jp.path().getFileName()));
+                    }
+                    if (future.object instanceof ModFile m) {
+                        Files.deleteIfExists(Loader.REMAPPED_MODS.resolve(m.jar().path().getFileName()));
+                    }
+                });
+
                 log.error("Failed to process " + future.object, t);
                 FabricGuiEntry.displayError("Failed to process " + future.object, t, true);
             }

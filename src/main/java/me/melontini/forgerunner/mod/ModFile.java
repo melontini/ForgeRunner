@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import lombok.Getter;
+import lombok.SneakyThrows;
 import lombok.experimental.Accessors;
 import lombok.extern.log4j.Log4j2;
 import me.melontini.forgerunner.api.ByteConvertible;
@@ -12,39 +13,39 @@ import me.melontini.forgerunner.api.adapt.IModClass;
 import me.melontini.forgerunner.api.adapt.IModFile;
 import me.melontini.forgerunner.util.Exceptions;
 import me.melontini.forgerunner.util.JarPath;
+import net.fabricmc.loader.impl.util.FileSystemUtil;
 import org.spongepowered.asm.util.Constants;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.*;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 @Accessors(fluent = true)
 @Log4j2
 public class ModFile implements IModFile {
 
     private final Map<String, ByteConvertible> files = new HashMap<>();
-    private final Map<String, ModClass> classes = new HashMap<>();
+    private final Map<String, IModClass> classes = new HashMap<>();
     @Getter
     private final JarPath jar;
     @Getter
     private final Environment environment;
-    private final Set<String> excludedEntries = new HashSet<>();
     private final boolean hasForgeMeta;
 
-    public ModFile(JarPath jarPath, Environment environment) {
+    @SneakyThrows
+    public ModFile(JarPath jarPath, FileSystem fs, Environment environment) {
         this.jar = jarPath;
         this.files.put("fabric.mod.json", new ModJson());
         this.environment = environment;
-        this.hasForgeMeta = jarPath.jarFile().getJarEntry("META-INF/mods.toml") != null;
-        this.excludedEntries.add("META-INF/mods.toml");
+        this.hasForgeMeta = Files.exists(fs.getPath("META-INF/mods.toml"));
 
         try {
             this.parseJarJar();
@@ -54,41 +55,28 @@ public class ModFile implements IModFile {
 
         this.files.put("META-INF/MANIFEST.MF", new Manifest(Exceptions.uncheck(() -> jarPath.jarFile().getManifest())));
 
-        jar.jarFile().stream().filter(jarEntry -> jarEntry.getRealName().endsWith(".class"))
-                .forEach(jarEntry -> Exceptions.uncheck(() -> {
-                    String name = jarEntry.getRealName().replace(".class", "");
-                    byte[] bytes = jar.jarFile().getInputStream(jarEntry).readAllBytes();
-                    ModClass cls = new ModClass(name, bytes, environment);
-
-                    environment.addClass(cls);
-                    this.files.put(name + ".class", cls);
-                    this.classes.put(name, cls);
-                }));
-
         String attr = manifest().manifest().getMainAttributes().getValue(Constants.ManifestAttributes.MIXINCONFIGS);
         if (attr != null) {
             String[] configs = attr.split(",");
             for (String mixin : configs) {
-                JarEntry entry = jar.jarFile().getJarEntry(mixin);
-                if (entry == null) continue; //To work around some mods including configs from others.
-                this.files.put(mixin, new MixinConfig(Exceptions.uncheck(() -> new InputStreamReader(jar.jarFile().getInputStream(entry)))));
+                Path path = fs.getPath(mixin);
+                if (mixin.isBlank() || !Files.exists(path)) continue;
+                this.files.put(mixin, new MixinConfig(Exceptions.uncheck(() -> Files.newBufferedReader(path))));
                 this.modJson().mixinConfig(mixin);
             }
         }
 
-        jar.jarFile().stream().filter(entry -> entry.getRealName().endsWith(".RSA") || entry.getRealName().endsWith(".SF"))
-                .forEach(entry -> {
-                    log.debug("Removing signature file {}!", entry.getRealName());
-                    this.excludedEntries.add(entry.getRealName());
-                });
-
-        //add every other file.
-        jar.jarFile().stream().filter(entry -> !this.files.containsKey(entry.getRealName()))
-                .forEach(entry -> {
-                    if (entry.isDirectory()) return;
-                    byte[] bytes = Exceptions.uncheck(() -> jar.jarFile().getInputStream(entry).readAllBytes());
-                    this.files.put(entry.getRealName(), () -> bytes);
-                });
+        Files.walkFileTree(fs.getRootDirectories().iterator().next(), new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                String s = file.toString().substring(1);
+                if (s.endsWith(".RSA") || s.endsWith(".SF")) {
+                    log.debug("Removing signature file {}!", file.toString());
+                    Files.deleteIfExists(file);
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
     }
 
     private void parseJarJar() throws IOException {
@@ -110,23 +98,25 @@ public class ModFile implements IModFile {
             byte[] bytes = Exceptions.uncheck(() -> jar.jarFile().getInputStream(jar.jarFile().getJarEntry(path)).readAllBytes());
             Files.write(temp.toPath(), bytes);
 
-            ModFile file = new ModFile(new JarPath(new JarFile(temp), temp.toPath(), true), environment);
-            if (!file.hasForgeMeta()) {
-                JsonObject id = jarObj.get("identifier").getAsJsonObject();
-                String modId = (id.get("group").getAsString().replace('.', '_') + '_' + id.get("artifact").getAsString().replace('.', '-')).toLowerCase();
-                String name = id.get("artifact").getAsString();
+            try (FileSystem fs = FileSystemUtil.getJarFileSystem(temp.toPath(), true).get()) {
+                ModFile file = new ModFile(new JarPath(new JarFile(temp), temp.toPath(), true), fs, environment);
+                if (!file.hasForgeMeta()) {
+                    JsonObject id = jarObj.get("identifier").getAsJsonObject();
+                    String modId = (id.get("group").getAsString().replace('.', '_') + '_' + id.get("artifact").getAsString().replace('.', '-')).toLowerCase();
+                    String name = id.get("artifact").getAsString();
 
-                JsonObject version = jarObj.get("version").getAsJsonObject();
-                String modVersion = version.get("artifactVersion").getAsString();
+                    JsonObject version = jarObj.get("version").getAsJsonObject();
+                    String modVersion = version.get("artifactVersion").getAsString();
 
-                file.modJson().id(modId);
-                file.modJson().version(modVersion);
-                file.modJson().accept(object1 -> object1.addProperty("name", name));
+                    file.modJson().id(modId);
+                    file.modJson().version(modVersion);
+                    file.modJson().accept(object1 -> object1.addProperty("name", name));
+                }
+
+                this.environment().appendModFile(file, fs);
+                this.modJson().jar(path);
+                this.files.put(path, file);
             }
-
-            this.environment().appendModFile(file);
-            this.modJson().jar(path);
-            this.files.put(path, file);
         }
     }
 
@@ -137,12 +127,15 @@ public class ModFile implements IModFile {
     public ModJson modJson() {
         return (ModJson) this.files.get("fabric.mod.json");
     }
+
     public String id() {
         return modJson().id();
     }
+
     public String version() {
         return modJson().version();
     }
+
     public Path path() {
         return jar().path();
     }
@@ -155,29 +148,33 @@ public class ModFile implements IModFile {
         return modJson().mixinConfigs();
     }
 
-    public Collection<IModClass> classes() {
-        return Collections.unmodifiableCollection(this.classes.values());
+    @Override
+    public Map<String, IModClass> classes() {
+        return classes;
     }
 
-    public void writeToJar(ZipOutputStream zos) throws IOException {
+    public void writeToJar(FileSystem fs) throws IOException {
         for (Map.Entry<String, ByteConvertible> entry : this.files.entrySet()) {
-            if (this.excludedEntries.contains(entry.getKey())) continue;
+            Path path = fs.getPath(entry.getKey());
+            Path parent = path.getParent();
+            if (parent != null) Files.createDirectories(parent);
 
-            zos.putNextEntry(new ZipEntry(entry.getKey()));
-            zos.write(entry.getValue().toBytes());
-            zos.closeEntry();
+            Files.write(path, entry.getValue().toBytes());
         }
     }
 
     public ByteConvertible getFile(String name) {
         return this.files.get(name);
     }
+
     public void putFile(String name, ByteConvertible file) {
         this.files.put(name, file);
     }
+
     public void removeFile(String name) {
         this.files.remove(name);
     }
+
     public boolean hasFile(String name) {
         return this.files.containsKey(name);
     }
@@ -186,10 +183,11 @@ public class ModFile implements IModFile {
     public byte[] toBytes() {
         try {
             File file = File.createTempFile(jar.path().getFileName().toString().replace(".jar", ""), ".jar");
+            Files.deleteIfExists(file.toPath());
+            try (FileSystem fs = FileSystemUtil.getJarFileSystem(file.toPath(), true).get()) {
+                writeToJar(fs);
+            }
             file.deleteOnExit();
-            ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(file.toPath()));
-            writeToJar(zos);
-            zos.close();
             return Files.readAllBytes(file.toPath());
         } catch (IOException e) {
             throw new RuntimeException(e);

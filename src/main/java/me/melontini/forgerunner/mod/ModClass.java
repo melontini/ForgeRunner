@@ -5,10 +5,10 @@ import me.melontini.forgerunner.api.adapt.IModClass;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 
-public record ModClass(String name, AtomicReference<byte[]> bytes, Environment environment) implements IModClass {
+public record ModClass(String name, AtomicReference<byte[]> bytes) implements IModClass {
 
-    public ModClass(String name, byte[] bytes, Environment environment) {
-        this(name, new AtomicReference<>(bytes), environment);
+    public ModClass(String name, byte[] bytes) {
+        this(name, new AtomicReference<>(bytes));
     }
 
     public void accept(BiFunction<String, byte[], byte[]> transformer) {
