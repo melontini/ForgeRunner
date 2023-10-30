@@ -1,5 +1,7 @@
 package me.melontini.forgerunner.forge.hooks;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraftforge.fml.LogicalSide;
 
@@ -10,7 +12,10 @@ public abstract class EffectiveSideHook {
     private static EffectiveSideHook INSTANCE = new EffectiveSideHook() {
         @Override
         public LogicalSide getSided() {
-            return MinecraftClient.getInstance().isOnThread() ? LogicalSide.CLIENT : LogicalSide.SERVER;
+            if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT) {
+                return MinecraftClient.getInstance().isOnThread() ? LogicalSide.CLIENT : LogicalSide.SERVER;
+            }
+            return LogicalSide.SERVER; //Is it a fine assumption that the server is always logical server?
         }
     };
 
