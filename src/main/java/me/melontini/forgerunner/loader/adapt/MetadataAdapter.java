@@ -5,7 +5,9 @@ import com.electronwill.nightconfig.json.JsonFormat;
 import com.electronwill.nightconfig.toml.TomlFormat;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import lombok.extern.log4j.Log4j2;
 import me.melontini.forgerunner.api.ByteConvertible;
 import me.melontini.forgerunner.api.adapt.Adapter;
@@ -29,8 +31,6 @@ public class MetadataAdapter implements Adapter {
             .put("license", "license")
             .build();
 
-    //TODO: dependencies.
-    //TODO: environment.
     static void adapt(JsonObject forge, IModFile file) {
         JsonArray modInfoArray = forge.get("mods").getAsJsonArray();
         if (modInfoArray.size() > 1) log.error("{} contains more than one mod in it's metadata, which is currently not supported. Issues may arise", file.path().getFileName());
@@ -47,6 +47,29 @@ public class MetadataAdapter implements Adapter {
         if (forge.has("displayURL"))
             contact.add("homepage", forge.get("displayURL"));
         fabric.accept(object -> object.add("contact", contact));
+
+        fabric.accept(object -> object.addProperty("environment", "*"));
+
+        String id = file.id();
+        if (!forge.has("dependencies")) return;
+        JsonObject deps =  forge.get("dependencies").getAsJsonObject();
+        if (!deps.has(id)) return;
+        JsonArray modDeps = deps.get(id).getAsJsonArray();
+        JsonObject depends = new JsonObject();
+        JsonObject recommends = new JsonObject();
+
+        for (JsonElement modDep : modDeps) {
+            if (!modDep.isJsonObject()) continue;
+            JsonObject dep = modDep.getAsJsonObject();
+            String modId = dep.get("modId").getAsString();
+            if (dep.get("mandatory") instanceof JsonPrimitive jp && jp.getAsBoolean()) {
+                depends.addProperty(modId, "*"); //TODO versions
+            } else {
+                recommends.addProperty(modId, "*"); //TODO versions
+            }
+        }
+        if (depends.size() > 0) fabric.accept(object -> object.add("depends", depends));
+        if (recommends.size() > 0) fabric.accept(object -> object.add("recommends", recommends));
     }
 
     @Override

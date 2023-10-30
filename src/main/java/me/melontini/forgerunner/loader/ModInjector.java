@@ -4,8 +4,10 @@ import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 import me.melontini.forgerunner.forge.mod.Mods;
 import me.melontini.forgerunner.util.Loader;
+import net.fabricmc.loader.api.metadata.ModDependency;
 import net.fabricmc.loader.impl.ModContainerImpl;
 import net.fabricmc.loader.impl.discovery.*;
+import net.fabricmc.loader.impl.gui.FabricGuiEntry;
 import net.fabricmc.loader.impl.launch.FabricLauncherBase;
 import net.fabricmc.loader.impl.metadata.DependencyOverrides;
 import net.fabricmc.loader.impl.metadata.VersionOverrides;
@@ -16,6 +18,7 @@ import net.fabricmc.loader.impl.util.log.LogCategory;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 
 //Close your eyes
 @Log4j2
@@ -40,14 +43,11 @@ public class ModInjector {
         });
 
         Map<String, Set<ModCandidate>> envDisabledMods = new HashMap<>();
-        ModDiscoverer discoverer = new ModDiscoverer(new VersionOverrides(), new DependencyOverrides(Loader.getInstance().getGameDir()));
+        ModDiscoverer discoverer = new ModDiscoverer(new VersionOverrides(), new DependencyOverrides(Loader.getInstance().getConfigDir()));
         discoverer.addCandidateFinder(new DirectoryModCandidateFinder(Loader.REMAPPED_MODS, Loader.getInstance().isDevelopmentEnvironment()));
         List<ModCandidate> candidates = discoverer.discoverMods(Loader.getInstance(), envDisabledMods);
 
-        candidates.removeIf(candidate -> candidate.isBuiltin() || Loader.getInstance().isModLoaded(candidate.getId()));
-        candidates.forEach(modCandidate -> modCandidate.getNestedMods().removeIf(candidate -> candidate.isBuiltin() || Loader.getInstance().isModLoaded(candidate.getId())));
-
-        candidates = ModResolver.resolve(candidates, Loader.getInstance().getEnvironmentType(), envDisabledMods);
+        resolve(candidates);
 
         if (candidates.isEmpty()) {
             log.info("No Forge mod candidates will be loaded");
@@ -91,5 +91,65 @@ public class ModInjector {
         }
 
         Loader.appendMods(Mods.getForgeMods());
+    }
+
+    private static void resolve(List<ModCandidate> candidates) {
+        candidates.removeIf(candidate -> candidate.isBuiltin() || Loader.getInstance().isModLoaded(candidate.getId()));
+        candidates.forEach(modCandidate -> modCandidate.getNestedMods().removeIf(candidate -> candidate.isBuiltin() || Loader.getInstance().isModLoaded(candidate.getId())));
+
+        Set<String> resolvedIDs = candidates.stream().map(ModCandidate::getId).collect(Collectors.toSet());
+
+        Map<ModCandidate, Set<ModDependency>> unmet = new HashMap<>();
+        Map<ModCandidate, Set<ModDependency>> recommends = new HashMap<>();
+        for (ModCandidate candidate : candidates) {
+            for (ModDependency dependency : candidate.getDependencies()) {
+                switch (dependency.getKind()) {
+                    case DEPENDS -> resolve(dependency, candidate, resolvedIDs, unmet);
+                    case RECOMMENDS -> resolve(dependency, candidate, resolvedIDs, recommends);
+                    default -> throw new IllegalStateException("Unexpected value: " + dependency.getKind());
+                }
+            }
+        }
+        if (!unmet.isEmpty()) {
+            StringBuilder solution = new StringBuilder();
+            solution.append("Some of your mods are incompatible with the game or each other!").append('\n');
+            solution.append("A potential solution has been determined, this may resolve your problem:").append('\n');
+
+            Set<String> dIds = new HashSet<>();
+            unmet.forEach((candidate, modDependencies) -> modDependencies.forEach(modDependency -> dIds.add(modDependency.getModId())));
+            dIds.forEach(s -> solution.append("\t").append("- Install ").append(s).append(", any version").append('\n'));
+            solution.append("More details:").append('\n');
+            unmet.forEach((candidate, modDependencies) -> modDependencies.forEach(modDependency -> solution
+                    .append('\t').append("- Mod '").append(candidate.getMetadata().getName())
+                    .append(" (").append(candidate.getId()).append(") ").append(candidate.getMetadata().getVersion())
+                    .append(" requires any version of ").append(modDependency.getModId())
+                    .append(", which is missing!").append('\n')));
+            log.info(solution);
+            FabricGuiEntry.displayError("Mod resolution exception!", new ModResolutionException(solution.toString()), true);
+        }
+
+        if (!recommends.isEmpty()) {
+            recommends.forEach((candidate, modDependencies) -> modDependencies.forEach(dependency -> {
+                StringBuilder solution = new StringBuilder();
+                solution.append("- Mod '").append(candidate.getMetadata().getName())
+                        .append(" (").append(candidate.getId()).append(") ").append(candidate.getMetadata().getVersion())
+                        .append(" recommends any version of ").append(dependency.getModId())
+                        .append(", which is missing!").append('\n');
+                solution.append('\t').append("- You should install any version of ").append(dependency.getModId()).append(" for the optimal experience.").append('\n');
+                log.info(solution);
+            }));
+        }
+    }
+
+    private static void resolve(ModDependency dependency, ModCandidate candidate, Set<String> resolvedIds, Map<ModCandidate, Set<ModDependency>> deps){
+        if (dependency.getKind().isPositive()) {
+            if (!Loader.getInstance().isModLoaded(dependency.getModId()) && !resolvedIds.contains(dependency.getModId())) {
+                deps.computeIfAbsent(candidate, candidate1 -> new HashSet<>()).add(dependency);
+            }
+        } else {
+            if (Loader.getInstance().isModLoaded(dependency.getModId()) || resolvedIds.contains(dependency.getModId())) {
+                deps.computeIfAbsent(candidate, candidate1 -> new HashSet<>()).add(dependency);
+            }
+        }
     }
 }

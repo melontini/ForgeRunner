@@ -31,6 +31,9 @@
   "languageAdapters": {
     "forgerunner": "me.melontini.forgerunner.loader.EarlyBootstrap"
   },
+  "provides": [
+    "forge"
+  ],
   "depends": {
     "fabricloader": ">=${loader_version}",
     "minecraft": "*"
