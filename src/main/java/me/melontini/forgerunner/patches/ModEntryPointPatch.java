@@ -18,7 +18,7 @@ public class ModEntryPointPatch implements ClassPatch {
     private static final String MOD = "Lnet/minecraftforge/fml/common/Mod;";
 
     @Override
-    public void patch(ClassNode node, IModFile modFile) {
+    public Result patch(ClassNode node, IModFile modFile) {
         if (node.visibleAnnotations != null) {
             if (node.visibleAnnotations.stream().anyMatch(annotation -> MOD.equals(annotation.desc))) {
                 modFile.modJson().entrypoint("forgerunner:main", node.name.replace('/', '.'));
@@ -34,14 +34,16 @@ public class ModEntryPointPatch implements ClassPatch {
                 }
 
                 MethodNode method = node.methods.stream().filter(m -> "onInitialize".equals(m.name) && m.desc.equals("()V")).findFirst().orElse(null);
-                if (method != null) return;
+                if (method != null) return Result.DEFAULT;
 
                 MethodVisitor visitor = node.visitMethod(Opcodes.ACC_PUBLIC, "onInitialize", "()V", null, null);
                 visitor.visitCode();
                 visitor.visitInsn(Opcodes.RETURN);
                 visitor.visitMaxs(1, 1);
                 visitor.visitEnd();
+                return Result.COMPUTE_MAXS_AND_FRAMES;
             }
         }
+        return Result.DEFAULT;
     }
 }

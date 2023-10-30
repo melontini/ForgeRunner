@@ -20,7 +20,7 @@ public class EventBusFixer implements ClassPatch {
     private static final String EVENT_SUBSCRIBER = "Lnet/minecraftforge/fml/common/Mod$EventBusSubscriber;";
 
     @Override
-    public void patch(ClassNode node, IModFile modFile) {
+    public Result patch(ClassNode node, IModFile modFile) {
         if (node.visibleAnnotations != null) {
             if (node.visibleAnnotations.stream().anyMatch(annotation -> EVENT_SUBSCRIBER.equals(annotation.desc))) {
                 modFile.modJson().entrypoint("forgerunner:bus", node.name.replace('/', '.'));
@@ -40,7 +40,7 @@ public class EventBusFixer implements ClassPatch {
                 node.interfaces.add(BUS_SUBSCRIBER.getInternalName());
 
                 MethodNode method = node.methods.stream().filter(m -> "onEventBus".equals(m.name) && m.desc.equals("()V")).findFirst().orElse(null);
-                if (method != null) return;
+                if (method != null) return Result.DEFAULT;
 
                 MethodVisitor visitor = node.visitMethod(Opcodes.ACC_PUBLIC, "onEventBus", "()V", null, null);
                 visitor.visitCode();
@@ -49,7 +49,9 @@ public class EventBusFixer implements ClassPatch {
                 visitor.visitInsn(Opcodes.RETURN);
                 visitor.visitMaxs(1, 1);
                 visitor.visitEnd();
+                return Result.COMPUTE_MAXS_AND_FRAMES;
             }
         }
+        return Result.DEFAULT;
     }
 }

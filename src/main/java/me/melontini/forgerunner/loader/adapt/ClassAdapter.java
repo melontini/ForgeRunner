@@ -35,11 +35,14 @@ public class ClassAdapter implements Adapter {
                 ClassNode node = new ClassNode();
                 reader.accept(new ClassRemapper(node, env.frr()), 0);
 
+                int flags = 0;
                 for (ClassPatch patch : PATCHES) {
-                    patch.patch(node, mod);
+                    ClassPatch.Result r = patch.patch(node, mod);
+                    if (r.computeFrames()) flags |= ClassWriter.COMPUTE_FRAMES;
+                    if (r.computeMaxs()) flags |= ClassWriter.COMPUTE_MAXS;
                 }
 
-                MixinClassWriter writer = new MixinClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+                MixinClassWriter writer = new MixinClassWriter(flags);
                 node.accept(writer);
                 return writer.toByteArray();
             });
