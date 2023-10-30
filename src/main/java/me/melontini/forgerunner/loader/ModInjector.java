@@ -18,7 +18,6 @@ import net.fabricmc.loader.impl.util.log.LogCategory;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.stream.Collectors;
 
 //Close your eyes
 @Log4j2
@@ -47,7 +46,7 @@ public class ModInjector {
         discoverer.addCandidateFinder(new DirectoryModCandidateFinder(Loader.REMAPPED_MODS, Loader.getInstance().isDevelopmentEnvironment()));
         List<ModCandidate> candidates = discoverer.discoverMods(Loader.getInstance(), envDisabledMods);
 
-        resolve(candidates);
+        candidates = resolve(candidates);
 
         if (candidates.isEmpty()) {
             log.info("No Forge mod candidates will be loaded");
@@ -93,19 +92,40 @@ public class ModInjector {
         Loader.appendMods(Mods.getForgeMods());
     }
 
-    private static void resolve(List<ModCandidate> candidates) {
-        candidates.removeIf(candidate -> candidate.isBuiltin() || Loader.getInstance().isModLoaded(candidate.getId()));
-        candidates.forEach(modCandidate -> modCandidate.getNestedMods().removeIf(candidate -> candidate.isBuiltin() || Loader.getInstance().isModLoaded(candidate.getId())));
+    private static void remove(Collection<ModCandidate> candidates, ModCandidate candidate) {
+        candidates.removeIf(candidate1 -> candidate1.getId().equals(candidate.getId()) &&
+                candidate1.getVersion().equals(candidate.getVersion()));
+        for (ModCandidate modCandidate : candidates) {
+            remove(modCandidate.getNestedMods(), candidate);
+        }
+    }
 
-        Set<String> resolvedIDs = candidates.stream().map(ModCandidate::getId).collect(Collectors.toSet());
+    private static List<ModCandidate> resolve(List<ModCandidate> candidates) {
+        Map<String, Set<ModCandidate>> idMap = new LinkedHashMap<>();
+        candidates.forEach(candidate -> idMap.computeIfAbsent(candidate.getId(), k -> new LinkedHashSet<>()).add(candidate));
+
+        for (Map.Entry<String, Set<ModCandidate>> e : idMap.entrySet()) {
+            ModCandidate top = e.getValue().stream().max(Comparator.comparing(ModCandidate::getVersion)).orElseThrow();
+            if (Loader.getInstance().isModLoaded(top.getId())) {
+                for (ModCandidate candidate : e.getValue()) {
+                    remove(candidates, candidate);
+                }
+                continue;
+            }
+
+            e.getValue().remove(top);
+            for (ModCandidate candidate : e.getValue()) {
+                remove(candidates, candidate);
+            }
+        }
 
         Map<ModCandidate, Set<ModDependency>> unmet = new HashMap<>();
         Map<ModCandidate, Set<ModDependency>> recommends = new HashMap<>();
         for (ModCandidate candidate : candidates) {
             for (ModDependency dependency : candidate.getDependencies()) {
                 switch (dependency.getKind()) {
-                    case DEPENDS -> resolve(dependency, candidate, resolvedIDs, unmet);
-                    case RECOMMENDS -> resolve(dependency, candidate, resolvedIDs, recommends);
+                    case DEPENDS -> resolve(dependency, candidate, idMap.keySet(), unmet);
+                    case RECOMMENDS -> resolve(dependency, candidate, idMap.keySet(), recommends);
                     default -> throw new IllegalStateException("Unexpected value: " + dependency.getKind());
                 }
             }
@@ -139,6 +159,7 @@ public class ModInjector {
                 log.info(solution);
             }));
         }
+        return candidates;
     }
 
     private static void resolve(ModDependency dependency, ModCandidate candidate, Set<String> resolvedIds, Map<ModCandidate, Set<ModDependency>> deps){
