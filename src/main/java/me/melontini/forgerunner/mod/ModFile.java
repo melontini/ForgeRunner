@@ -85,6 +85,7 @@ public class ModFile implements IModFile {
         //add every other file.
         jar.jarFile().stream().filter(entry -> !this.files.containsKey(entry.getRealName()))
                 .forEach(entry -> {
+                    if (entry.isDirectory()) return;
                     byte[] bytes = Exceptions.uncheck(() -> jar.jarFile().getInputStream(entry).readAllBytes());
                     this.files.put(entry.getRealName(), () -> bytes);
                 });
