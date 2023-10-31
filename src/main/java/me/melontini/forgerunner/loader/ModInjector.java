@@ -160,7 +160,7 @@ public class ModInjector {
                 log.info(solution);
             }));
         }
-        return candidates;
+        return candidates.stream().sorted((o1, o2) -> o1.getId().compareToIgnoreCase(o2.getId())).toList();
     }
 
     private static void resolve(ModDependency dependency, ModCandidate candidate, Set<String> resolvedIds, Map<ModCandidate, Set<ModDependency>> deps){

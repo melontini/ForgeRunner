@@ -9,7 +9,6 @@ import me.melontini.forgerunner.api.ByteConvertible;
 import me.melontini.forgerunner.api.adapt.Adapter;
 import me.melontini.forgerunner.api.adapt.IEnvironment;
 import me.melontini.forgerunner.api.adapt.IModFile;
-import me.melontini.forgerunner.loader.remapping.SrgRemapper;
 import me.melontini.forgerunner.mod.MixinConfig;
 import org.objectweb.asm.commons.Remapper;
 
@@ -88,7 +87,7 @@ public class RefmapRemapper implements Adapter {
     }
 
     private static String remapField(String owner, String name, String desc, Remapper remapper) {
-        name = SrgRemapper.mapFieldName(owner, name, desc);
+        name = remapper.mapFieldName(owner, name, desc);
         desc = remapper.mapDesc(desc);
 
         String mappedOwner = owner != null ? remapper.mapDesc(owner) : "";
@@ -96,7 +95,7 @@ public class RefmapRemapper implements Adapter {
     }
 
     private static String remapMethod(String owner, String name, String desc, Remapper remapper) {
-        name = SrgRemapper.mapMethodName(owner, name, desc);
+        name = remapper.mapMethodName(owner, name, desc);
         desc = remapper.mapMethodDesc(desc);
 
         String mappedOwner = owner != null ? remapper.mapDesc(owner) : "";

@@ -2,7 +2,7 @@ package me.melontini.forgerunner.loader;
 
 import lombok.extern.log4j.Log4j2;
 import me.melontini.forgerunner.loader.adapt.ModAdapter;
-import me.melontini.forgerunner.loader.remapping.SrgRemapper;
+import me.melontini.forgerunner.loader.remapping.SrgMap;
 import me.melontini.forgerunner.util.JarPath;
 import me.melontini.forgerunner.util.Loader;
 import me.melontini.forgerunner.util.MappingsDownloader;
@@ -39,7 +39,7 @@ public class EarlyBootstrap implements LanguageAdapter {
             log.error("Failed to download mappings", e);
             FabricGuiEntry.displayError("Failed to download mappings", e, true);
         }
-        SrgRemapper.load();
+        SrgMap.load();
         Set<JarPath> forgeMods = ModLocator.start();
         ModAdapter.start(forgeMods);
         ModInjector.inject();

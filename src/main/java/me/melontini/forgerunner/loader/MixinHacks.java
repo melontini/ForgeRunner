@@ -2,7 +2,6 @@ package me.melontini.forgerunner.loader;
 
 import lombok.extern.log4j.Log4j2;
 import me.melontini.forgerunner.loader.adapt.ModAdapter;
-import me.melontini.forgerunner.loader.remapping.SrgRemapper;
 import me.melontini.forgerunner.mod.Environment;
 import me.melontini.forgerunner.mod.ModClass;
 import me.melontini.forgerunner.util.Exceptions;
@@ -42,12 +41,12 @@ public class MixinHacks {
         IClassBytecodeProvider newProvider = new IClassBytecodeProvider() {
             final MappingResolver resolver = FabricLoader.getInstance().getMappingResolver();
             @Override public ClassNode getClassNode(String name) throws ClassNotFoundException, IOException {
-                if (name.startsWith("net/minecraft")) name = resolver.mapClassName("intermediary", SrgRemapper.mapClassName(name).replace('/', '.')).replace('.', '/');
+                if (name.startsWith("net/minecraft")) name = resolver.mapClassName("intermediary", env.frr().map(name).replace('/', '.')).replace('.', '/');
                 try {return current.getClassNode(name);} catch (Throwable t) {return getNode(name);}
             }
 
             @Override public ClassNode getClassNode(String name, boolean runTransformers) throws ClassNotFoundException, IOException {
-                if (name.startsWith("net/minecraft")) name = resolver.mapClassName("intermediary", SrgRemapper.mapClassName(name).replace('/', '.')).replace('.', '/');
+                if (name.startsWith("net/minecraft")) name = resolver.mapClassName("intermediary", env.frr().map(name).replace('/', '.')).replace('.', '/');
                 try {return current.getClassNode(name, runTransformers);} catch (Throwable t) {return getNode(name);}
             }
 

@@ -65,12 +65,12 @@ public class ClassAdapter implements Adapter {
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                 String s = file.toString().substring(1);
                 if (s.endsWith(".class")) {
-                    String name = file.toString().replace(".class", "");
+                    String name = file.toString().substring(0, s.length() - 6);
                     byte[] bytes = Files.readAllBytes(file);
                     ModClass cls = new ModClass(name, bytes);
 
                     env.addClass(cls);
-                    mod.putFile(name + ".class", cls);
+                    mod.putFile(s, cls);
                     mod.classes().put(name, cls);
                 }
                 return FileVisitResult.CONTINUE;

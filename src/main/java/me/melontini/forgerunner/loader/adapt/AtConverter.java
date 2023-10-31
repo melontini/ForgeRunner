@@ -4,7 +4,7 @@ import me.melontini.forgerunner.api.ByteConvertible;
 import me.melontini.forgerunner.api.adapt.Adapter;
 import me.melontini.forgerunner.api.adapt.IEnvironment;
 import me.melontini.forgerunner.api.adapt.IModFile;
-import me.melontini.forgerunner.loader.remapping.SrgRemapper;
+import me.melontini.forgerunner.loader.remapping.SrgMap;
 import net.minecraftforge.srgutils.IMappingFile;
 
 import java.io.IOException;
@@ -35,7 +35,7 @@ public class AtConverter implements Adapter {
 
             String cls = at[1].replace('.', '/');
             if (at.length == 2) {
-                String mapped = SrgRemapper.mapClassName(cls);
+                String mapped = env.frr().map(cls);
                 if (widen) accessWidener.append("accessible ").append("class ")
                         .append(mapped).append("\n");
                 if (mutable) accessWidener.append("extendable ").append("class ")
@@ -44,16 +44,16 @@ public class AtConverter implements Adapter {
             }
 
             String member = at[2];
-            String mapped = SrgRemapper.mapClassName(cls);
+            String mapped = env.frr().map(cls);
             if (member.startsWith("*")) {// Does not seem to be part of the spec https://github.com/MinecraftForge/AccessTransformers/blob/master/FMLAT.md
                 if (member.contains("(") && member.contains(")")) {
-                    IMappingFile.IClass iClass = SrgRemapper.getMappingFile().getClass(cls);
+                    IMappingFile.IClass iClass = SrgMap.getMappingFile().getClass(cls);
                     if (iClass == null) return;
                     for (IMappingFile.IMethod iMethod : iClass.getMethods()) {
                         method(accessWidener, mapped, iMethod.getMapped(), iMethod.getMappedDescriptor(), mutable, widen);
                     }
                 } else {
-                    IMappingFile.IClass iClass = SrgRemapper.getMappingFile().getClass(cls);
+                    IMappingFile.IClass iClass = SrgMap.getMappingFile().getClass(cls);
                     if (iClass == null) return;
                     for (IMappingFile.IField iField : iClass.getFields()) {
                         field(accessWidener, mapped, iField.getMapped(), iField.getMappedDescriptor(), mutable, widen);
@@ -64,14 +64,14 @@ public class AtConverter implements Adapter {
             if (member.contains("(") && member.contains(")")) {
                 String name = member.substring(0, member.indexOf('('));
                 String desc = member.substring(member.indexOf('('));
-                member = SrgRemapper.mapMethodName(cls, name, desc);
+                member = env.frr().mapMethodName(cls, name, desc);
                 String mappedDesc = env.frr().mapDesc(desc);
 
                 method(accessWidener, mapped, member, mappedDesc, mutable, widen);
             } else {
                 //having to scrape by, since ATs don't provide field descriptors.
                 //This breaks mods transforming other mods, but why would you do that?
-                IMappingFile.IClass iClass = SrgRemapper.getMappingFile().getClass(cls);
+                IMappingFile.IClass iClass = SrgMap.getMappingFile().getClass(cls);
                 if (iClass == null) return;
                 IMappingFile.IField iField = iClass.getField(member);
                 if (iField == null) return;
