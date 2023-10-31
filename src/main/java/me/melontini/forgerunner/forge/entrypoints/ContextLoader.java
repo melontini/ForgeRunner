@@ -108,6 +108,7 @@ public class ContextLoader {
             ModLoadingContext.get().setActiveContainer(Mods.getFromDelegate((ModContainerImpl) mod));
             return supplier.get();
         } finally {
+            ModLoadingContext.get().setActiveContainer(null);
             LOADING_MOD.remove();
         }
     }
@@ -115,8 +116,10 @@ public class ContextLoader {
     private static void loadingMod(Runnable runnable, ModContainer mod) {
         try {
             LOADING_MOD.set(mod);
+            ModLoadingContext.get().setActiveContainer(Mods.getFromDelegate((ModContainerImpl) mod));
             runnable.run();
         } finally {
+            ModLoadingContext.get().setActiveContainer(null);
             LOADING_MOD.remove();
         }
     }
