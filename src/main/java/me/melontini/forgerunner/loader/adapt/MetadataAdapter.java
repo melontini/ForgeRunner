@@ -37,6 +37,7 @@ public class MetadataAdapter implements Adapter {
 
     static void adapt(JsonObject forge, IModFile file) {
         JsonArray modInfoArray = forge.get("mods").getAsJsonArray();
+        //Mods seem to use this as fabric's `provides` block. Is there any other functionality?
         if (modInfoArray.size() > 1) log.error("{} contains more than one mod in it's metadata, which is currently not supported. Issues may arise", file.path().getFileName());
         JsonObject modInfo = modInfoArray.get(0).getAsJsonObject();
 

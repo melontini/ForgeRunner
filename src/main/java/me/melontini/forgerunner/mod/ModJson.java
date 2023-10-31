@@ -20,6 +20,8 @@ public class ModJson implements IModJson {
 
         JsonObject custom = new JsonObject();
         custom.addProperty("forgerunner:forge_mod", true);
+        JsonObject entrypoints = new JsonObject();
+        custom.add("forgerunner:entrypoints", entrypoints);
         backing.add("custom", custom);
     }
 
@@ -74,6 +76,15 @@ public class ModJson implements IModJson {
         array.add(file);
 
         backing.add("jars", array);
+    }
+
+    public void addCustomEntrypoint(String entrypoint, String notation) {
+        JsonObject custom = backing.get("custom").getAsJsonObject();
+        JsonObject entrypoints = custom.get("forgerunner:entrypoints").getAsJsonObject();
+        JsonArray ep = entrypoints.has(entrypoint) ? entrypoints.get(entrypoint).getAsJsonArray() : new JsonArray();
+        JsonPrimitive notationPrimitive = new JsonPrimitive(notation);
+        if (!ep.contains(notationPrimitive)) ep.add(notationPrimitive);
+        entrypoints.add(entrypoint, ep);
     }
 
     public boolean has(String s) {

@@ -23,7 +23,7 @@ public class EventBusFixer implements ClassPatch {
     public Result patch(ClassNode node, IModFile modFile) {
         if (node.visibleAnnotations != null) {
             if (node.visibleAnnotations.stream().anyMatch(annotation -> EVENT_SUBSCRIBER.equals(annotation.desc))) {
-                modFile.modJson().entrypoint("forgerunner:bus", node.name.replace('/', '.'));
+                modFile.modJson().addCustomEntrypoint("bus", node.name.replace('/', '.'));
                 node.access = (node.access & ~(Opcodes.ACC_PRIVATE | Opcodes.ACC_PROTECTED)) | Opcodes.ACC_PUBLIC;
 
                 if (node.methods != null) for (MethodNode methodNode : node.methods) {

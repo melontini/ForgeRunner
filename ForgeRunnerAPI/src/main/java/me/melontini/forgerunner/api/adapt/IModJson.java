@@ -12,7 +12,8 @@ public interface IModJson extends ByteConvertible {
 
     String id();
     String version();
-    void entrypoint(String entrypoint, String notation);
+    //void entrypoint(String entrypoint, String notation);
+    void addCustomEntrypoint(String entrypoint, String notation);
     void mixinConfig(String config);
     List<String> mixinConfigs();
     void jar(String jar);
