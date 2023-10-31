@@ -76,6 +76,10 @@ public class ModJson implements IModJson {
         backing.add("jars", array);
     }
 
+    public boolean has(String s) {
+        return backing.has(s);
+    }
+
     @Override
     public byte[] toBytes() {
         return backing.toString().getBytes();

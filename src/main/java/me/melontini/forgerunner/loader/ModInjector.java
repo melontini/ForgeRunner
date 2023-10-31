@@ -24,7 +24,8 @@ import java.util.*;
 public class ModInjector {
 
     private static final Map<String, List<String>> ALIASES = Map.of(
-            "com_github_llamalad7_mixinextras", List.of("mixinextras")
+            "com_github_llamalad7_mixinextras", List.of("mixinextras"),
+            "fabric-language-kotlin", List.of("kotlinforforge")
     );//TODO: use a service
     private static final String CACHE_DIR_NAME = ".fabric";
     private static final String PROCESSED_MODS = "processedForgeMods";

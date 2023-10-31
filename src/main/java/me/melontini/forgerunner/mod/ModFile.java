@@ -193,4 +193,9 @@ public class ModFile implements IModFile {
             throw new RuntimeException(e);
         }
     }
+
+    @Override
+    public String toString() {
+        return jar.path().getFileName().toString() + (modJson().has("id") ? " (" + modJson().id() + ")" : "");
+    }
 }

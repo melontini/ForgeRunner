@@ -61,7 +61,7 @@ public class ModAdapter {
                 ModFile mod = new ModFile(jar, fs, env);
                 env.appendModFile(mod, fs);
             }
-        });
+        }, jp -> Files.deleteIfExists(Loader.REMAPPED_MODS.resolve(jp.path().getFileName())));
 
         MixinHacks.bootstrap();
         IClassBytecodeProvider current = MixinService.getService().getBytecodeProvider();
@@ -71,7 +71,8 @@ public class ModAdapter {
         log.info("Adapting modfiles... 0%");
         processed.set(0);
         async(() -> stage.accept("Adapting"), env.modFiles(), mod ->
-                adapters.forEach(adapter -> adapter.adapt(mod, env)));
+                adapters.forEach(adapter -> adapter.adapt(mod, env)), mod ->
+                Files.deleteIfExists(Loader.REMAPPED_MODS.resolve(mod.jar().path().getFileName())));
 
         log.info("Writing modfiles... 0%");
         processed.set(0);
@@ -85,14 +86,14 @@ public class ModAdapter {
                     mod.jar().jarFile().close();
                 }
             }
-        });
+        }, mod -> Files.deleteIfExists(Loader.REMAPPED_MODS.resolve(mod.jar().path().getFileName())));
         log.info("Done!");
 
         SERVICE.shutdown();
         MixinHacks.uncrackMixinService(currentService, env);
     }
 
-    private static <T> void async(Runnable progress, Collection<T> collection, Exceptions.ThrowingConsumer<T> consumer) {
+    private static <T> void async(Runnable progress, Collection<T> collection, Exceptions.ThrowingConsumer<T> consumer, Exceptions.ThrowingConsumer<T> handler) {
         record TaskFuture<T>(T object, CompletableFuture<?> future) { }
 
         List<TaskFuture<T>> futures = new ArrayList<>();
@@ -100,7 +101,10 @@ public class ModAdapter {
         for (T t : collection) {
             futures.add(new TaskFuture<>(t, CompletableFuture.runAsync(() -> {
                 try {
-                    if (caught.get()) return;
+                    if (caught.get()) {
+                        Exceptions.uncheck(() -> handler.accept(t));
+                        return;
+                    }
                     consumer.accept(t);
                 } catch (Throwable t1) {
                     caught.set(true);
@@ -117,14 +121,7 @@ public class ModAdapter {
             try {
                 future.future().get();
             } catch (Throwable t) {
-                Exceptions.uncheck(() -> {
-                    if (future.object instanceof JarPath jp) {
-                        Files.deleteIfExists(Loader.REMAPPED_MODS.resolve(jp.path().getFileName()));
-                    }
-                    if (future.object instanceof ModFile m) {
-                        Files.deleteIfExists(Loader.REMAPPED_MODS.resolve(m.jar().path().getFileName()));
-                    }
-                });
+                Exceptions.uncheck(() -> handler.accept(future.object));
 
                 log.error("Failed to process " + future.object, t);
                 FabricGuiEntry.displayError("Failed to process " + future.object, t, true);
