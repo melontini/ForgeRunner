@@ -80,6 +80,10 @@ public class Loader {
         return MOD_MAP.get();
     }
 
+    public static ModContainerImpl getMod(String id) {
+        return getModMap().get(id);
+    }
+
     @SneakyThrows
     public static void dumpModsList(List<ModCandidate> candidates) {
         MOD_DUMPER.accept(candidates);

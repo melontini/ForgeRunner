@@ -1,7 +1,7 @@
 package net.minecraftforge.fml.loading.moddiscovery;
 
+import me.melontini.forgerunner.forge.mod.Mods;
 import net.fabricmc.loader.impl.ModContainerImpl;
-import net.minecraftforge.fml.loading.LoadingModList;
 import net.minecraftforge.forgespi.language.IModFileInfo;
 import net.minecraftforge.forgespi.language.IModInfo;
 
@@ -18,7 +18,7 @@ public class ModFileInfo implements IModFileInfo {
 
     @Override
     public List<IModInfo> getMods() {
-        return List.of(LoadingModList.fr$getModInfo(this));
+        return List.of(Mods.getModInfo(this));
     }
 
     @Override

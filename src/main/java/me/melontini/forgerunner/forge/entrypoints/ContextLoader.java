@@ -16,7 +16,6 @@ import net.minecraftforge.fml.config.ConfigTracker;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.*;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.fml.javafmlmod.FMLModContainer;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -27,7 +26,6 @@ import java.util.function.Supplier;
 @Log4j2
 public class ContextLoader {
 
-    private static final ThreadLocal<ModContainer> LOADING_MOD = ThreadLocal.withInitial(() -> null);
     private static final Map<String, EntryPointData> ENTRYPOINTS = new HashMap<>();
 
     public static void addEntrypoint(ModContainerImpl mod, String entrypoint, String cls) {
@@ -35,9 +33,8 @@ public class ContextLoader {
     }
 
     public static void onPreLaunch() {
-        Mods.consumeForgeMods(mod -> Mods.WRAPPERS.computeIfAbsent(mod, id -> new FMLModContainer(mod, () -> Mods.MOD_OBJECTS.get(mod))));
-        Mods.consumeForgeMods(mod -> {
-            loadingMod(() -> FMLJavaModLoadingContext.get().getModEventBus(), mod);
+        Mods.forEachForgeMod((mod, container) -> {
+            load(() -> FMLJavaModLoadingContext.get().getModEventBus(), mod);
 
             if (mod.getMetadata().containsCustomValue("forgerunner:entrypoints")) {
                 CustomValue.CvObject cvObject = mod.getMetadata().getCustomValue("forgerunner:entrypoints").getAsObject();
@@ -67,23 +64,28 @@ public class ContextLoader {
         }
         ConfigTracker.INSTANCE.loadConfigs(ModConfig.Type.COMMON, FabricLoader.getInstance().getConfigDir());
 
-        Mods.consumeForgeMods(mod -> loadingMod(() -> FMLJavaModLoadingContext.get().getModEventBus().post(new FMLCommonSetupEvent(Mods.getFromDelegate(mod))), mod));
+        Mods.forEachForgeMod((mod, container) -> load(() ->
+                FMLJavaModLoadingContext.get().getModEventBus().post(new FMLCommonSetupEvent(Mods.getFromDelegate(mod))), mod));
     }
 
     //This is not how Forge handles this, but I'll see if I have to reimplement the dumb ParallelDispatchEvent and ModStateProvider
     public static void onClient() {
-        Mods.consumeForgeMods(mod -> loadingMod(() -> FMLJavaModLoadingContext.get().getModEventBus().post(new FMLClientSetupEvent(Mods.getFromDelegate(mod))), mod));
+        Mods.forEachForgeMod((mod, container) -> load(() ->
+                FMLJavaModLoadingContext.get().getModEventBus().post(new FMLClientSetupEvent(Mods.getFromDelegate(mod))), mod));
         fireComms();
     }
 
     public static void onServer() {
-        Mods.consumeForgeMods(mod -> loadingMod(() -> FMLJavaModLoadingContext.get().getModEventBus().post(new FMLDedicatedServerSetupEvent(Mods.getFromDelegate(mod))), mod));
+        Mods.forEachForgeMod((mod, container) -> load(() ->
+                FMLJavaModLoadingContext.get().getModEventBus().post(new FMLDedicatedServerSetupEvent(Mods.getFromDelegate(mod))), mod));
         fireComms();
     }
 
     private static void fireComms() {
-        Mods.consumeForgeMods(mod -> loadingMod(() -> FMLJavaModLoadingContext.get().getModEventBus().post(new InterModEnqueueEvent(Mods.getFromDelegate(mod))), mod));
-        Mods.consumeForgeMods(mod -> loadingMod(() -> FMLJavaModLoadingContext.get().getModEventBus().post(new InterModProcessEvent(Mods.getFromDelegate(mod))), mod));
+        Mods.forEachForgeMod((mod, container) -> load(() ->
+                FMLJavaModLoadingContext.get().getModEventBus().post(new InterModEnqueueEvent(Mods.getFromDelegate(mod))), mod));
+        Mods.forEachForgeMod((mod, container) -> load(() ->
+                FMLJavaModLoadingContext.get().getModEventBus().post(new InterModProcessEvent(Mods.getFromDelegate(mod))), mod));
     }
 
     @SneakyThrows
@@ -99,28 +101,24 @@ public class ContextLoader {
             mods.put(cls, entrypoint.getValue());
         }
 
-        mods.forEach((aClass, mod) -> loadingMod(() -> consumer.accept((Class<T>) aClass, mod), mod));
+        mods.forEach((aClass, mod) -> load(() -> consumer.accept((Class<T>) aClass, mod), mod));
     }
 
-    private static <T> T loadingMod(Supplier<T> supplier, ModContainer mod) {
+    private static <T> T load(Supplier<T> supplier, ModContainer mod) {
         try {
-            LOADING_MOD.set(mod);
             ModLoadingContext.get().setActiveContainer(Mods.getFromDelegate((ModContainerImpl) mod));
             return supplier.get();
         } finally {
             ModLoadingContext.get().setActiveContainer(null);
-            LOADING_MOD.remove();
         }
     }
 
-    private static void loadingMod(Runnable runnable, ModContainer mod) {
+    private static void load(Runnable runnable, ModContainer mod) {
         try {
-            LOADING_MOD.set(mod);
             ModLoadingContext.get().setActiveContainer(Mods.getFromDelegate((ModContainerImpl) mod));
             runnable.run();
         } finally {
             ModLoadingContext.get().setActiveContainer(null);
-            LOADING_MOD.remove();
         }
     }
 }

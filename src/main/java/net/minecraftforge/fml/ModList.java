@@ -18,7 +18,7 @@ public class ModList {
     }
 
     public Optional<? extends ModContainer> getModContainerById(String modId) {
-        ModContainerImpl container = Loader.getModMap().get(modId);
+        ModContainerImpl container = Loader.getMod(modId);
         if (container != null) {
             return Optional.ofNullable(Mods.getFromDelegate(container));
         }
@@ -34,13 +34,10 @@ public class ModList {
     }
 
     public void forEachModContainer(BiConsumer<String, ModContainer> modContainerConsumer) {
-        Mods.consumeForgeMods(mod -> {
-            ModContainer container = Mods.getFromDelegate(mod);
-            modContainerConsumer.accept(container.getModId(), container);
-        });
+        Mods.forEachMod((mod, container) -> modContainerConsumer.accept(container.getModId(), container));
     }
 
     public void forEachModInOrder(Consumer<ModContainer> containerConsumer) {
-        Mods.consumeForgeMods(mod -> containerConsumer.accept(Mods.getFromDelegate(mod)));
+        Mods.forEachMod((mod, container) -> containerConsumer.accept(container));
     }
 }

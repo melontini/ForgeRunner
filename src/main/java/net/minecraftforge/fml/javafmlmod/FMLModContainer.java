@@ -2,13 +2,13 @@ package net.minecraftforge.fml.javafmlmod;
 
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
+import me.melontini.forgerunner.forge.mod.Mods;
 import net.fabricmc.loader.impl.ModContainerImpl;
 import net.minecraftforge.eventbus.api.BusBuilder;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModContainer;
 import net.minecraftforge.fml.event.IModBusEvent;
-import net.minecraftforge.fml.loading.LoadingModList;
 
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -23,7 +23,7 @@ public class FMLModContainer extends ModContainer {
 
 
     public FMLModContainer(ModContainerImpl delegate, Supplier<Object> modInstance) {
-        super(LoadingModList.fr$getModFileByDelegate(delegate));
+        super(Mods.getFileInfo(delegate));
         this.modInstanceSupplier = modInstance;
         final var ext = new FMLJavaModLoadingContext(this);
         this.contextExtension = () -> ext;

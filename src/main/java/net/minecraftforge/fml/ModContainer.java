@@ -1,5 +1,6 @@
 package net.minecraftforge.fml;
 
+import me.melontini.forgerunner.forge.mod.Mods;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.fml.config.IConfigEvent;
 import net.minecraftforge.fml.config.ModConfig;
@@ -26,7 +27,7 @@ public abstract class ModContainer {
 
     public ModContainer(ModFileInfo delegate) {
         this.delegate = delegate;
-        this.modInfo = new ModInfo(delegate);
+        this.modInfo = Mods.getModInfo(delegate);
     }
 
     public final String getModId() {
